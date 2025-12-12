@@ -13,7 +13,7 @@ export default function Index() {
             <div className="w-10 h-10 rounded-xl hero-gradient flex items-center justify-center">
               <GraduationCap className="w-5 h-5 text-primary-foreground" />
             </div>
-            <span className="font-display font-bold text-xl">LearnHub</span>
+            <span className="font-display font-bold text-xl">Brightoria</span>
           </Link>
           <div className="flex items-center gap-3">
             <Link to="/login">
@@ -113,9 +113,9 @@ export default function Index() {
         <div className="container mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <GraduationCap className="w-5 h-5 text-primary" />
-            <span className="font-display font-semibold">LearnHub</span>
+            <span className="font-display font-semibold">Brightoria</span>
           </div>
-          <p className="text-sm text-muted-foreground">© 2024 LearnHub. All rights reserved.</p>
+          <p className="text-sm text-muted-foreground">© 2024 Brightoria. All rights reserved.</p>
         </div>
       </footer>
     </div>

@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { mockCourses } from '@/data/mockData';
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,15 +13,50 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Upload, FileText, Video, Image, Plus, Check, X } from 'lucide-react';
+import { Upload, FileText, Video, Image, Plus, Check, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
+interface Course {
+  id: string;
+  title: string;
+}
+
 export default function TeacherUpload() {
+  const { user } = useAuth();
+  const [courses, setCourses] = useState<Course[]>([]);
   const [selectedCourse, setSelectedCourse] = useState<string>('');
   const [uploadType, setUploadType] = useState<'notes' | 'assignment' | 'quiz'>('notes');
   const [dragActive, setDragActive] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // Form states
+  const [noteTitle, setNoteTitle] = useState('');
+  const [assignmentTitle, setAssignmentTitle] = useState('');
+  const [instructions, setInstructions] = useState('');
+  const [dueDate, setDueDate] = useState('');
+  const [maxScore, setMaxScore] = useState('100');
+  const [quizTitle, setQuizTitle] = useState('');
+  const [duration, setDuration] = useState('30');
+  const [totalMarks, setTotalMarks] = useState('50');
+
+  useEffect(() => {
+    fetchCourses();
+  }, [user]);
+
+  const fetchCourses = async () => {
+    if (!user) return;
+    
+    const { data, error } = await supabase
+      .from('courses')
+      .select('id, title')
+      .eq('teacher_id', user.id);
+    
+    if (data) {
+      setCourses(data);
+    }
+  };
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -54,18 +90,138 @@ export default function TeacherUpload() {
     setFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleUpload = () => {
-    if (!selectedCourse) {
-      toast.error('Please select a course');
-      return;
+  const uploadFileToStorage = async (file: File): Promise<string | null> => {
+    if (!user) return null;
+    
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+    
+    const { data, error } = await supabase.storage
+      .from('uploads')
+      .upload(fileName, file);
+    
+    if (error) {
+      console.error('Upload error:', error);
+      return null;
     }
-    if (files.length === 0) {
-      toast.error('Please add at least one file');
+    
+    const { data: urlData } = supabase.storage
+      .from('uploads')
+      .getPublicUrl(fileName);
+    
+    return urlData.publicUrl;
+  };
+
+  const handleUploadNotes = async () => {
+    if (!selectedCourse || !noteTitle) {
+      toast.error('Please fill in all required fields');
       return;
     }
     
-    toast.success('Files uploaded successfully!');
-    setFiles([]);
+    setIsLoading(true);
+    
+    try {
+      let fileUrl = null;
+      let fileType = 'text';
+      
+      if (files.length > 0) {
+        fileUrl = await uploadFileToStorage(files[0]);
+        const ext = files[0].name.split('.').pop()?.toLowerCase();
+        if (ext === 'pdf') fileType = 'pdf';
+        else if (['png', 'jpg', 'jpeg', 'gif'].includes(ext || '')) fileType = 'image';
+      }
+      
+      const { error } = await supabase.from('notes').insert({
+        course_id: selectedCourse,
+        title: noteTitle,
+        file_url: fileUrl,
+        file_type: fileType,
+      });
+      
+      if (error) throw error;
+      
+      toast.success('Notes uploaded successfully!');
+      setNoteTitle('');
+      setFiles([]);
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to upload notes');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleUploadAssignment = async () => {
+    if (!selectedCourse || !assignmentTitle || !dueDate) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    try {
+      const { error } = await supabase.from('assignments').insert({
+        course_id: selectedCourse,
+        title: assignmentTitle,
+        instructions,
+        due_date: new Date(dueDate).toISOString(),
+        max_score: parseInt(maxScore) || 100,
+      });
+      
+      if (error) throw error;
+      
+      toast.success('Assignment created successfully!');
+      setAssignmentTitle('');
+      setInstructions('');
+      setDueDate('');
+      setMaxScore('100');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to create assignment');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleUploadQuiz = async () => {
+    if (!selectedCourse || !quizTitle) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    try {
+      const { error } = await supabase.from('quizzes').insert({
+        course_id: selectedCourse,
+        title: quizTitle,
+        total_marks: parseInt(totalMarks) || 50,
+        duration: parseInt(duration) || 30,
+      });
+      
+      if (error) throw error;
+      
+      toast.success('Quiz created successfully!');
+      setQuizTitle('');
+      setDuration('30');
+      setTotalMarks('50');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to create quiz');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleUpload = () => {
+    switch (uploadType) {
+      case 'notes':
+        handleUploadNotes();
+        break;
+      case 'assignment':
+        handleUploadAssignment();
+        break;
+      case 'quiz':
+        handleUploadQuiz();
+        break;
+    }
   };
 
   const getFileIcon = (file: File) => {
@@ -96,13 +252,18 @@ export default function TeacherUpload() {
                 <SelectValue placeholder="Choose a course..." />
               </SelectTrigger>
               <SelectContent>
-                {mockCourses.filter(c => c.teacherId === '2').map(course => (
+                {courses.map(course => (
                   <SelectItem key={course.id} value={course.id}>
                     {course.title}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            {courses.length === 0 && (
+              <p className="text-sm text-muted-foreground mt-2">
+                No courses found. Create a course first to upload content.
+              </p>
+            )}
           </div>
 
           {/* Upload Type Tabs */}
@@ -117,7 +278,12 @@ export default function TeacherUpload() {
             <TabsContent value="notes" className="space-y-4 mt-4">
               <div className="space-y-2">
                 <Label htmlFor="noteTitle">Note Title</Label>
-                <Input id="noteTitle" placeholder="e.g., Chapter 1 - Introduction" />
+                <Input 
+                  id="noteTitle" 
+                  placeholder="e.g., Chapter 1 - Introduction"
+                  value={noteTitle}
+                  onChange={(e) => setNoteTitle(e.target.value)}
+                />
               </div>
 
               {/* File Drop Zone */}
@@ -146,7 +312,7 @@ export default function TeacherUpload() {
                   </div>
                   <p className="font-medium mb-1">Drop files here or click to upload</p>
                   <p className="text-sm text-muted-foreground">
-                    PDF, DOC, TXT, Images, Videos (max 50MB)
+                    PDF, DOC, TXT, Images, Videos (max 20MB)
                   </p>
                 </label>
               </div>
@@ -186,7 +352,12 @@ export default function TeacherUpload() {
             <TabsContent value="assignment" className="space-y-4 mt-4">
               <div className="space-y-2">
                 <Label htmlFor="assignmentTitle">Assignment Title</Label>
-                <Input id="assignmentTitle" placeholder="e.g., Week 1 Assignment" />
+                <Input 
+                  id="assignmentTitle" 
+                  placeholder="e.g., Week 1 Assignment"
+                  value={assignmentTitle}
+                  onChange={(e) => setAssignmentTitle(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="instructions">Instructions</Label>
@@ -194,16 +365,29 @@ export default function TeacherUpload() {
                   id="instructions"
                   placeholder="Describe the assignment requirements..."
                   rows={4}
+                  value={instructions}
+                  onChange={(e) => setInstructions(e.target.value)}
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="dueDate">Due Date</Label>
-                  <Input id="dueDate" type="date" />
+                  <Input 
+                    id="dueDate" 
+                    type="date"
+                    value={dueDate}
+                    onChange={(e) => setDueDate(e.target.value)}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="maxScore">Max Score</Label>
-                  <Input id="maxScore" type="number" placeholder="100" />
+                  <Input 
+                    id="maxScore" 
+                    type="number" 
+                    placeholder="100"
+                    value={maxScore}
+                    onChange={(e) => setMaxScore(e.target.value)}
+                  />
                 </div>
               </div>
             </TabsContent>
@@ -212,16 +396,33 @@ export default function TeacherUpload() {
             <TabsContent value="quiz" className="space-y-4 mt-4">
               <div className="space-y-2">
                 <Label htmlFor="quizTitle">Quiz Title</Label>
-                <Input id="quizTitle" placeholder="e.g., Chapter 1 Quiz" />
+                <Input 
+                  id="quizTitle" 
+                  placeholder="e.g., Chapter 1 Quiz"
+                  value={quizTitle}
+                  onChange={(e) => setQuizTitle(e.target.value)}
+                />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="duration">Duration (minutes)</Label>
-                  <Input id="duration" type="number" placeholder="30" />
+                  <Input 
+                    id="duration" 
+                    type="number" 
+                    placeholder="30"
+                    value={duration}
+                    onChange={(e) => setDuration(e.target.value)}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="totalMarks">Total Marks</Label>
-                  <Input id="totalMarks" type="number" placeholder="50" />
+                  <Input 
+                    id="totalMarks" 
+                    type="number" 
+                    placeholder="50"
+                    value={totalMarks}
+                    onChange={(e) => setTotalMarks(e.target.value)}
+                  />
                 </div>
               </div>
               
@@ -241,9 +442,18 @@ export default function TeacherUpload() {
           </Tabs>
 
           {/* Submit Button */}
-          <Button onClick={handleUpload} className="w-full" size="lg">
-            <Check className="w-5 h-5 mr-2" />
-            Upload Content
+          <Button onClick={handleUpload} className="w-full" size="lg" disabled={isLoading}>
+            {isLoading ? (
+              <>
+                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                Uploading...
+              </>
+            ) : (
+              <>
+                <Check className="w-5 h-5 mr-2" />
+                Upload Content
+              </>
+            )}
           </Button>
         </div>
 
@@ -273,7 +483,7 @@ export default function TeacherUpload() {
                   <span className="text-[10px] text-primary-foreground font-bold">3</span>
                 </div>
                 <span className="text-muted-foreground">
-                  Keep video files under 100MB for faster loading
+                  Keep video files under 20MB for faster loading
                 </span>
               </li>
               <li className="flex items-start gap-2">
