@@ -1,115 +1,155 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, UserRole } from '@/types';
+import { Session } from '@supabase/supabase-js';
+import { supabase } from '@/integrations/supabase/client';
+
+interface AuthUser {
+  id: string;
+  name: string;
+  email: string;
+  role: 'student' | 'teacher' | 'admin';
+  avatar?: string;
+}
 
 interface AuthContextType {
-  user: User | null;
+  user: AuthUser | null;
+  session: Session | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string, role: UserRole) => Promise<void>;
-  logout: () => void;
+  register: (name: string, email: string, password: string, role: 'student' | 'teacher' | 'admin') => Promise<void>;
+  logout: () => Promise<void>;
   isAuthenticated: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock users for demo
-const mockUsers: (User & { password: string })[] = [
-  {
-    id: '1',
-    name: 'John Student',
-    email: 'student@demo.com',
-    password: 'demo123',
-    role: 'student',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=John',
-    createdAt: new Date(),
-  },
-  {
-    id: '2',
-    name: 'Sarah Teacher',
-    email: 'teacher@demo.com',
-    password: 'demo123',
-    role: 'teacher',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah',
-    createdAt: new Date(),
-  },
-  {
-    id: '3',
-    name: 'Admin User',
-    email: 'admin@demo.com',
-    password: 'demo123',
-    role: 'admin',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Admin',
-    createdAt: new Date(),
-  },
-];
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    // Check for stored user on mount
-    const storedUser = localStorage.getItem('lms_user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
+  const fetchUserProfile = async (userId: string, email: string) => {
+    try {
+      // Fetch profile
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      // Fetch role
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (profile) {
+        setUser({
+          id: userId,
+          name: profile.name || email,
+          email: email,
+          role: (roleData?.role as 'student' | 'teacher' | 'admin') || 'student',
+          avatar: profile.avatar_url || undefined,
+        });
+      } else {
+        // Profile not created yet, set basic user
+        setUser({
+          id: userId,
+          name: email.split('@')[0],
+          email: email,
+          role: (roleData?.role as 'student' | 'teacher' | 'admin') || 'student',
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
     }
-    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        
+        if (session?.user) {
+          // Defer profile fetch to avoid deadlock
+          setTimeout(() => {
+            fetchUserProfile(session.user.id, session.user.email || '');
+          }, 0);
+        } else {
+          setUser(null);
+        }
+        
+        setIsLoading(false);
+      }
+    );
+
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      
+      if (session?.user) {
+        fetchUserProfile(session.user.id, session.user.email || '');
+      }
+      
+      setIsLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 800));
     
-    const foundUser = mockUsers.find(u => u.email === email && u.password === password);
-    if (!foundUser) {
-      setIsLoading(false);
-      throw new Error('Invalid email or password');
-    }
-
-    const { password: _, ...userWithoutPassword } = foundUser;
-    setUser(userWithoutPassword);
-    localStorage.setItem('lms_user', JSON.stringify(userWithoutPassword));
-    setIsLoading(false);
-  };
-
-  const register = async (name: string, email: string, password: string, role: UserRole) => {
-    setIsLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    if (mockUsers.some(u => u.email === email)) {
-      setIsLoading(false);
-      throw new Error('Email already exists');
-    }
-
-    const newUser: User = {
-      id: Date.now().toString(),
-      name,
+    const { error } = await supabase.auth.signInWithPassword({
       email,
-      role,
-      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`,
-      createdAt: new Date(),
-    };
+      password,
+    });
 
-    setUser(newUser);
-    localStorage.setItem('lms_user', JSON.stringify(newUser));
-    setIsLoading(false);
+    if (error) {
+      setIsLoading(false);
+      throw new Error(error.message);
+    }
   };
 
-  const logout = () => {
+  const register = async (name: string, email: string, password: string, role: 'student' | 'teacher' | 'admin') => {
+    setIsLoading(true);
+    
+    const redirectUrl = `${window.location.origin}/`;
+    
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: redirectUrl,
+        data: {
+          name,
+          role,
+        },
+      },
+    });
+
+    if (error) {
+      setIsLoading(false);
+      throw new Error(error.message);
+    }
+  };
+
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
-    localStorage.removeItem('lms_user');
+    setSession(null);
   };
 
   return (
     <AuthContext.Provider value={{
       user,
+      session,
       isLoading,
       login,
       register,
       logout,
-      isAuthenticated: !!user,
+      isAuthenticated: !!session,
     }}>
       {children}
     </AuthContext.Provider>

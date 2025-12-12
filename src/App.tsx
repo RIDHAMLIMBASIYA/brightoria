@@ -18,6 +18,7 @@ import QuizAttempt from "./pages/QuizAttempt";
 import AITutor from "./pages/AITutor";
 import DoubtBot from "./pages/DoubtBot";
 import TeacherUpload from "./pages/TeacherUpload";
+import TeacherCourses from "./pages/TeacherCourses";
 import AdminUsers from "./pages/AdminUsers";
 import AdminAnalytics from "./pages/AdminAnalytics";
 import Settings from "./pages/Settings";
@@ -47,7 +48,7 @@ const App = () => (
               <Route path="/quizzes/:quizId" element={<QuizAttempt />} />
               <Route path="/ai-tutor" element={<AITutor />} />
               <Route path="/doubt-bot" element={<DoubtBot />} />
-              <Route path="/teacher/courses" element={<Courses />} />
+              <Route path="/teacher/courses" element={<TeacherCourses />} />
               <Route path="/teacher/upload" element={<TeacherUpload />} />
               <Route path="/teacher/submissions" element={<Assignments />} />
               <Route path="/admin/users" element={<AdminUsers />} />

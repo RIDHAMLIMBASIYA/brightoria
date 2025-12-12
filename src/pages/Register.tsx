@@ -4,9 +4,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { UserRole } from '@/types';
 import { GraduationCap, Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, User } from 'lucide-react';
 import { toast } from 'sonner';
+
+type UserRole = 'student' | 'teacher' | 'admin';
 
 export default function Register() {
   const [name, setName] = useState('');
@@ -24,6 +25,11 @@ export default function Register() {
     
     if (password !== confirmPassword) {
       toast.error('Passwords do not match');
+      return;
+    }
+
+    if (password.length < 6) {
+      toast.error('Password must be at least 6 characters');
       return;
     }
 
@@ -50,7 +56,7 @@ export default function Register() {
             <GraduationCap className="w-10 h-10 text-primary-foreground" />
           </div>
           <h1 className="font-display text-4xl md:text-5xl font-bold text-primary-foreground mb-4 animate-slide-up">
-            Join LearnHub
+            Join Brightoria
           </h1>
           <p className="text-xl text-primary-foreground/80 max-w-md animate-slide-up stagger-1">
             Start your learning journey with AI-powered education
@@ -96,7 +102,7 @@ export default function Register() {
             <div className="w-12 h-12 rounded-xl hero-gradient flex items-center justify-center">
               <GraduationCap className="w-6 h-6 text-primary-foreground" />
             </div>
-            <h1 className="font-display text-2xl font-bold text-foreground">LearnHub</h1>
+            <h1 className="font-display text-2xl font-bold text-foreground">Brightoria</h1>
           </div>
 
           <div className="text-center mb-8">

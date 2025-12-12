@@ -23,22 +23,11 @@ export default function Login() {
       await login(email, password);
       toast.success('Welcome back!');
       navigate('/dashboard');
-    } catch (error) {
-      toast.error('Invalid email or password');
+    } catch (error: any) {
+      toast.error(error.message || 'Invalid email or password');
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleDemoLogin = async (role: 'student' | 'teacher' | 'admin') => {
-    const credentials = {
-      student: { email: 'student@demo.com', password: 'demo123' },
-      teacher: { email: 'teacher@demo.com', password: 'demo123' },
-      admin: { email: 'admin@demo.com', password: 'demo123' },
-    };
-
-    setEmail(credentials[role].email);
-    setPassword(credentials[role].password);
   };
 
   return (
@@ -51,7 +40,7 @@ export default function Login() {
             <GraduationCap className="w-10 h-10 text-primary-foreground" />
           </div>
           <h1 className="font-display text-4xl md:text-5xl font-bold text-primary-foreground mb-4 animate-slide-up">
-            LearnHub
+            Brightoria
           </h1>
           <p className="text-xl text-primary-foreground/80 max-w-md animate-slide-up stagger-1">
             AI-Powered Learning Management System
@@ -81,7 +70,7 @@ export default function Login() {
             <div className="w-12 h-12 rounded-xl hero-gradient flex items-center justify-center">
               <GraduationCap className="w-6 h-6 text-primary-foreground" />
             </div>
-            <h1 className="font-display text-2xl font-bold text-foreground">LearnHub</h1>
+            <h1 className="font-display text-2xl font-bold text-foreground">Brightoria</h1>
           </div>
 
           <div className="text-center mb-8">
@@ -134,9 +123,6 @@ export default function Login() {
                 <input type="checkbox" className="rounded border-border" />
                 <span className="text-muted-foreground">Remember me</span>
               </label>
-              <Link to="/forgot-password" className="text-primary hover:underline">
-                Forgot password?
-              </Link>
             </div>
 
             <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
@@ -153,44 +139,6 @@ export default function Login() {
               )}
             </Button>
           </form>
-
-          {/* Demo Accounts */}
-          <div className="mt-8">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-border" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">Quick Demo Login</span>
-              </div>
-            </div>
-            <div className="mt-4 grid grid-cols-3 gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleDemoLogin('student')}
-                className="text-xs"
-              >
-                Student
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleDemoLogin('teacher')}
-                className="text-xs"
-              >
-                Teacher
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleDemoLogin('admin')}
-                className="text-xs"
-              >
-                Admin
-              </Button>
-            </div>
-          </div>
 
           <p className="text-center text-sm text-muted-foreground mt-8">
             Don't have an account?{' '}
