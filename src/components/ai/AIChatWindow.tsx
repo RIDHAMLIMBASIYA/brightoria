@@ -4,29 +4,35 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { AIMessage } from '@/types';
+import { useToast } from '@/hooks/use-toast';
 
 interface AIChatWindowProps {
   title: string;
   subtitle?: string;
   placeholder?: string;
   systemPrompt?: string;
-  onSendMessage?: (message: string) => Promise<string>;
   initialMessages?: AIMessage[];
   variant?: 'tutor' | 'doubt' | 'notes';
+  courseId?: string | null;
+  noteId?: string | null;
 }
+
+type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
 export function AIChatWindow({
   title,
   subtitle,
   placeholder = 'Type your message...',
-  onSendMessage,
   initialMessages = [],
   variant = 'tutor',
+  courseId,
+  noteId,
 }: AIChatWindowProps) {
   const [messages, setMessages] = useState<AIMessage[]>(initialMessages);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -35,6 +41,89 @@ export function AIChatWindow({
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Reset messages when course changes
+  useEffect(() => {
+    setMessages([]);
+  }, [courseId]);
+
+  const streamChat = async (chatMessages: ChatMessage[]) => {
+    const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-tutor-rag`;
+
+    const resp = await fetch(CHAT_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+      },
+      body: JSON.stringify({ 
+        messages: chatMessages,
+        courseId,
+        noteId,
+      }),
+    });
+
+    if (!resp.ok) {
+      const errorData = await resp.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(errorData.error || `HTTP ${resp.status}`);
+    }
+
+    if (!resp.body) throw new Error("No response body");
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let textBuffer = "";
+    let fullResponse = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      
+      textBuffer += decoder.decode(value, { stream: true });
+
+      let newlineIndex: number;
+      while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
+        let line = textBuffer.slice(0, newlineIndex);
+        textBuffer = textBuffer.slice(newlineIndex + 1);
+
+        if (line.endsWith("\r")) line = line.slice(0, -1);
+        if (line.startsWith(":") || line.trim() === "") continue;
+        if (!line.startsWith("data: ")) continue;
+
+        const jsonStr = line.slice(6).trim();
+        if (jsonStr === "[DONE]") break;
+
+        try {
+          const parsed = JSON.parse(jsonStr);
+          const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+          if (content) {
+            fullResponse += content;
+            // Update the assistant message progressively
+            setMessages(prev => {
+              const last = prev[prev.length - 1];
+              if (last?.role === 'assistant') {
+                return prev.map((m, i) => 
+                  i === prev.length - 1 ? { ...m, content: fullResponse } : m
+                );
+              }
+              return [...prev, {
+                id: Date.now().toString(),
+                role: 'assistant' as const,
+                content: fullResponse,
+                timestamp: new Date(),
+              }];
+            });
+          }
+        } catch {
+          // Incomplete JSON, put it back
+          textBuffer = line + "\n" + textBuffer;
+          break;
+        }
+      }
+    }
+
+    return fullResponse;
+  };
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -46,24 +135,32 @@ export function AIChatWindow({
       timestamp: new Date(),
     };
 
+    const chatMessages: ChatMessage[] = [
+      ...messages.map(m => ({ role: m.role, content: m.content })),
+      { role: 'user' as const, content: input.trim() }
+    ];
+
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
 
     try {
-      // Simulate AI response (replace with actual API call)
-      const response = await simulateAIResponse(input, variant);
-      
-      const assistantMessage: AIMessage = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: response,
-        timestamp: new Date(),
-      };
-
-      setMessages(prev => [...prev, assistantMessage]);
+      await streamChat(chatMessages);
     } catch (error) {
       console.error('Error getting AI response:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to get AI response",
+        variant: "destructive",
+      });
+      // Remove the incomplete assistant message if any
+      setMessages(prev => {
+        const last = prev[prev.length - 1];
+        if (last?.role === 'assistant' && !last.content) {
+          return prev.slice(0, -1);
+        }
+        return prev;
+      });
     } finally {
       setIsLoading(false);
     }
@@ -103,7 +200,9 @@ export function AIChatWindow({
               {variant === 'notes' && 'Chat with Your Notes'}
             </h4>
             <p className="text-sm text-muted-foreground max-w-xs">
-              {variant === 'tutor' && 'Ask me anything about your courses. I\'ll provide detailed explanations and practice questions.'}
+              {variant === 'tutor' && (courseId 
+                ? 'Ask me anything about this course. I\'ll use the course materials to give you accurate answers.'
+                : 'Select a course to get started. I\'ll answer questions using the course materials.')}
               {variant === 'doubt' && 'Got a quick question? I\'ll give you concise, helpful answers.'}
               {variant === 'notes' && 'Select a note and ask questions. I\'ll find answers from your study materials.'}
             </p>
@@ -148,7 +247,7 @@ export function AIChatWindow({
           </div>
         ))}
 
-        {isLoading && (
+        {isLoading && messages[messages.length - 1]?.role !== 'assistant' && (
           <div className="flex gap-3">
             <div className="w-8 h-8 rounded-lg hero-gradient flex items-center justify-center">
               <Bot className="w-4 h-4 text-primary-foreground" />
@@ -172,13 +271,13 @@ export function AIChatWindow({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder={placeholder}
-            disabled={isLoading}
+            placeholder={courseId ? placeholder : 'Select a course first...'}
+            disabled={isLoading || !courseId}
             className="flex-1 bg-background"
           />
           <Button
             onClick={handleSend}
-            disabled={!input.trim() || isLoading}
+            disabled={!input.trim() || isLoading || !courseId}
             className="px-4"
           >
             <Send className="w-4 h-4" />
@@ -187,27 +286,4 @@ export function AIChatWindow({
       </div>
     </div>
   );
-}
-
-// Simulated AI responses
-async function simulateAIResponse(message: string, variant: string): Promise<string> {
-  await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
-
-  const responses: Record<string, string[]> = {
-    tutor: [
-      "Great question! Let me explain this concept in detail.\n\n**Key Points:**\n1. First, understand the fundamental principle...\n2. Then, apply it to practical scenarios...\n3. Finally, test your understanding with exercises.\n\n**Practice Question:**\nCan you identify where this concept applies in real-world applications?",
-      "I'd be happy to help you understand this better!\n\nThis topic relates to several core concepts:\n- Foundation theory\n- Practical applications\n- Common misconceptions\n\n**Tip:** Try working through example problems to reinforce your learning.\n\n**Practice Question:**\nWhat do you think would happen if we changed one of the variables?",
-    ],
-    doubt: [
-      "Here's a quick answer:\n\n**Short explanation:** This works because of the underlying principle.\n\n**Steps:**\n1. Start here\n2. Apply the formula\n3. Check your result\n\nNeed more details?",
-      "Quick answer:\n\nThe key thing to remember is the relationship between these elements. Focus on understanding the 'why' behind each step.\n\n**Remember:** Practice makes perfect!",
-    ],
-    notes: [
-      "Based on your notes, I found relevant information:\n\n**From your notes:**\n> \"The concept demonstrates how...\" (Page 3)\n\n**Summary:**\nYour notes explain this as a fundamental principle that connects to the broader topic.\n\n**Source:** HTML Cheat Sheet, Section 2",
-      "Found it in your uploaded materials!\n\n**Excerpt from notes:**\n> \"This technique is commonly used...\" \n\n**Additional context:**\nYour notes mention this relates to practical applications.\n\n**Source:** CSS Flexbox Guide",
-    ],
-  };
-
-  const variantResponses = responses[variant] || responses.tutor;
-  return variantResponses[Math.floor(Math.random() * variantResponses.length)];
 }
