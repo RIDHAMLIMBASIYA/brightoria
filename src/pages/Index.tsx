@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { GraduationCap, Brain, Users, BookOpen, ArrowRight, CheckCircle, Play } from 'lucide-react';
+import { Brain, Users, BookOpen, ArrowRight, CheckCircle, Play } from 'lucide-react';
+import brightoriaLogo from '@/assets/brightoria-logo.png';
 
 export default function Index() {
   return (
@@ -11,7 +12,12 @@ export default function Index() {
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
             <div className="w-10 h-10 rounded-xl hero-gradient flex items-center justify-center">
-              <GraduationCap className="w-5 h-5 text-primary-foreground" />
+              <img
+                src={brightoriaLogo}
+                alt="Brightoria logo"
+                className="w-7 h-7 object-contain"
+                loading="eager"
+              />
             </div>
             <span className="font-display font-bold text-xl">Brightoria</span>
           </Link>
@@ -112,7 +118,12 @@ export default function Index() {
       <footer className="border-t border-border py-8 px-4">
         <div className="container mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <GraduationCap className="w-5 h-5 text-primary" />
+            <img
+              src={brightoriaLogo}
+              alt="Brightoria logo"
+              className="w-6 h-6 object-contain"
+              loading="lazy"
+            />
             <span className="font-display font-semibold">Brightoria</span>
           </div>
           <p className="text-sm text-muted-foreground">© 2024 Brightoria. All rights reserved.</p>

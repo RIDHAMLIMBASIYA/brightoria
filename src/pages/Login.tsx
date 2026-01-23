@@ -4,8 +4,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { GraduationCap, Mail, Lock, Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import brightoriaLogo from '@/assets/brightoria-logo.png';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -37,7 +38,12 @@ export default function Login() {
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=1200')] bg-cover bg-center opacity-10" />
         <div className="relative z-10 flex flex-col justify-center items-center w-full p-12 text-center">
           <div className="w-20 h-20 rounded-2xl bg-primary-foreground/20 backdrop-blur-sm flex items-center justify-center mb-8 animate-fade-in">
-            <GraduationCap className="w-10 h-10 text-primary-foreground" />
+              <img
+                src={brightoriaLogo}
+                alt="Brightoria logo"
+                className="w-12 h-12 object-contain"
+                loading="eager"
+              />
           </div>
           <h1 className="font-display text-4xl md:text-5xl font-bold text-primary-foreground mb-4 animate-slide-up">
             Brightoria
@@ -68,7 +74,12 @@ export default function Login() {
           {/* Mobile Logo */}
           <div className="lg:hidden flex items-center gap-3 mb-8 justify-center">
             <div className="w-12 h-12 rounded-xl hero-gradient flex items-center justify-center">
-              <GraduationCap className="w-6 h-6 text-primary-foreground" />
+              <img
+                src={brightoriaLogo}
+                alt="Brightoria logo"
+                className="w-8 h-8 object-contain"
+                loading="eager"
+              />
             </div>
             <h1 className="font-display text-2xl font-bold text-foreground">Brightoria</h1>
           </div>
