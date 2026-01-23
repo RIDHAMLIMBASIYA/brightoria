@@ -138,17 +138,6 @@ export function StudentDashboard() {
                   </div>
                 </Button>
               </Link>
-              <Link to="/doubt-bot" className="block">
-                <Button variant="ghost" className="w-full justify-start gap-3 h-12">
-                  <div className="w-8 h-8 rounded-lg accent-gradient flex items-center justify-center">
-                    <span className="text-sm">💬</span>
-                  </div>
-                  <div className="text-left">
-                    <p className="font-medium text-sm">Doubt Bot</p>
-                    <p className="text-xs text-muted-foreground">Quick Q&A</p>
-                  </div>
-                </Button>
-              </Link>
               <Link to="/quizzes" className="block">
                 <Button variant="ghost" className="w-full justify-start gap-3 h-12">
                   <div className="w-8 h-8 rounded-lg bg-success/20 flex items-center justify-center">

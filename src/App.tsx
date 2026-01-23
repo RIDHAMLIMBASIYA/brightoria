@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -18,7 +18,6 @@ import Assignments from "./pages/Assignments";
 import Quizzes from "./pages/Quizzes";
 import QuizAttempt from "./pages/QuizAttempt";
 import AITutor from "./pages/AITutor";
-import DoubtBot from "./pages/DoubtBot";
 import TeacherUpload from "./pages/TeacherUpload";
 import TeacherCourses from "./pages/TeacherCourses";
 import TeacherSubmissions from "./pages/TeacherSubmissions";
@@ -51,7 +50,7 @@ const App = () => (
                 <Route path="/quizzes" element={<Quizzes />} />
                 <Route path="/quizzes/:quizId" element={<QuizAttempt />} />
                 <Route path="/ai-tutor" element={<AITutor />} />
-                <Route path="/doubt-bot" element={<DoubtBot />} />
+                <Route path="/doubt-bot" element={<Navigate to="/ai-tutor" replace />} />
                 <Route path="/teacher/courses" element={<TeacherCourses />} />
                 <Route path="/teacher/upload" element={<TeacherUpload />} />
                 <Route path="/teacher/submissions" element={<TeacherSubmissions />} />
