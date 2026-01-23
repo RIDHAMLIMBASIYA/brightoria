@@ -6,9 +6,9 @@
 
 @layer base {
   :root {
-    /* Educational Teal + Amber Theme */
-    --background: 210 20% 98%;
-    --foreground: 215 25% 15%;
+    /* Brightoria Logo Theme (Cyan + Deep Indigo) */
+    --background: 220 25% 98%;
+    --foreground: 232 30% 14%;
 
     --card: 0 0% 100%;
     --card-foreground: 215 25% 15%;
@@ -16,21 +16,21 @@
     --popover: 0 0% 100%;
     --popover-foreground: 215 25% 15%;
 
-    /* Deep Teal Primary */
-    --primary: 186 72% 32%;
+    /* Deep Indigo Primary */
+    --primary: 236 54% 32%;
     --primary-foreground: 0 0% 100%;
 
-    /* Warm Secondary */
-    --secondary: 210 15% 94%;
-    --secondary-foreground: 215 25% 25%;
+    /* Cool Secondary */
+    --secondary: 225 20% 94%;
+    --secondary-foreground: 232 22% 22%;
 
     /* Muted Tones */
-    --muted: 210 15% 92%;
-    --muted-foreground: 215 15% 45%;
+    --muted: 225 18% 92%;
+    --muted-foreground: 232 14% 44%;
 
-    /* Amber Accent */
-    --accent: 38 92% 50%;
-    --accent-foreground: 0 0% 100%;
+    /* Cyan Accent */
+    --accent: 190 90% 45%;
+    --accent-foreground: 232 30% 10%;
 
     /* Status Colors */
     --destructive: 0 72% 51%;
@@ -46,57 +46,62 @@
     --info-foreground: 0 0% 100%;
 
     /* Borders & Inputs */
-    --border: 214 20% 88%;
-    --input: 214 20% 88%;
-    --ring: 186 72% 32%;
+    --border: 228 18% 86%;
+    --input: 228 18% 86%;
+    --ring: 190 90% 45%;
 
     --radius: 0.75rem;
 
     /* Sidebar */
-    --sidebar-background: 215 25% 15%;
-    --sidebar-foreground: 210 15% 85%;
-    --sidebar-primary: 186 72% 45%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 215 25% 22%;
-    --sidebar-accent-foreground: 210 15% 95%;
-    --sidebar-border: 215 20% 25%;
-    --sidebar-ring: 186 72% 45%;
+    --sidebar-background: 234 30% 12%;
+    --sidebar-foreground: 225 20% 90%;
+    --sidebar-primary: 190 90% 45%;
+    --sidebar-primary-foreground: 232 30% 10%;
+    --sidebar-accent: 234 26% 18%;
+    --sidebar-accent-foreground: 225 20% 96%;
+    --sidebar-border: 234 22% 22%;
+    --sidebar-ring: 190 90% 45%;
 
-    /* Custom Educational Tokens */
-    --gradient-hero: linear-gradient(135deg, hsl(186 72% 32%) 0%, hsl(199 89% 48%) 50%, hsl(186 72% 45%) 100%);
+    /* Brand Gradients */
+    --gradient-hero: linear-gradient(
+      135deg,
+      hsl(236 54% 32%) 0%,
+      hsl(248 56% 38%) 40%,
+      hsl(190 90% 45%) 100%
+    );
     --gradient-card: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(210 20% 98%) 100%);
-    --gradient-accent: linear-gradient(135deg, hsl(38 92% 50%) 0%, hsl(25 95% 53%) 100%);
-    --gradient-sidebar: linear-gradient(180deg, hsl(215 25% 15%) 0%, hsl(215 25% 12%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(190 90% 45%) 0%, hsl(206 92% 50%) 100%);
+    --gradient-sidebar: linear-gradient(180deg, hsl(234 30% 12%) 0%, hsl(234 34% 10%) 100%);
     
     --shadow-sm: 0 1px 2px 0 hsl(215 25% 15% / 0.05);
     --shadow-md: 0 4px 6px -1px hsl(215 25% 15% / 0.08), 0 2px 4px -2px hsl(215 25% 15% / 0.06);
     --shadow-lg: 0 10px 15px -3px hsl(215 25% 15% / 0.08), 0 4px 6px -4px hsl(215 25% 15% / 0.04);
     --shadow-xl: 0 20px 25px -5px hsl(215 25% 15% / 0.1), 0 8px 10px -6px hsl(215 25% 15% / 0.05);
-    --shadow-glow: 0 0 20px hsl(186 72% 32% / 0.3);
-    --shadow-accent: 0 4px 14px hsl(38 92% 50% / 0.35);
+    --shadow-glow: 0 0 22px hsl(190 90% 45% / 0.28);
+    --shadow-accent: 0 6px 18px hsl(248 56% 40% / 0.22);
   }
 
   .dark {
-    --background: 215 25% 10%;
-    --foreground: 210 15% 95%;
+    --background: 234 36% 8%;
+    --foreground: 225 20% 96%;
 
-    --card: 215 25% 14%;
-    --card-foreground: 210 15% 95%;
+    --card: 234 30% 12%;
+    --card-foreground: 225 20% 96%;
 
-    --popover: 215 25% 14%;
-    --popover-foreground: 210 15% 95%;
+    --popover: 234 30% 12%;
+    --popover-foreground: 225 20% 96%;
 
-    --primary: 186 72% 45%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 190 90% 45%;
+    --primary-foreground: 232 30% 10%;
 
-    --secondary: 215 20% 20%;
-    --secondary-foreground: 210 15% 90%;
+    --secondary: 234 22% 18%;
+    --secondary-foreground: 225 20% 92%;
 
-    --muted: 215 20% 18%;
-    --muted-foreground: 215 15% 55%;
+    --muted: 234 20% 16%;
+    --muted-foreground: 228 14% 62%;
 
-    --accent: 38 92% 55%;
-    --accent-foreground: 0 0% 10%;
+    --accent: 190 90% 52%;
+    --accent-foreground: 232 30% 10%;
 
     --destructive: 0 72% 55%;
     --destructive-foreground: 0 0% 100%;
@@ -110,18 +115,18 @@
     --info: 199 89% 55%;
     --info-foreground: 0 0% 10%;
 
-    --border: 215 20% 22%;
-    --input: 215 20% 22%;
-    --ring: 186 72% 45%;
+    --border: 234 18% 20%;
+    --input: 234 18% 20%;
+    --ring: 190 90% 52%;
 
-    --sidebar-background: 215 25% 8%;
-    --sidebar-foreground: 210 15% 85%;
-    --sidebar-primary: 186 72% 50%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 215 25% 15%;
-    --sidebar-accent-foreground: 210 15% 95%;
-    --sidebar-border: 215 20% 18%;
-    --sidebar-ring: 186 72% 50%;
+    --sidebar-background: 234 40% 7%;
+    --sidebar-foreground: 225 20% 90%;
+    --sidebar-primary: 190 90% 48%;
+    --sidebar-primary-foreground: 232 30% 10%;
+    --sidebar-accent: 234 26% 14%;
+    --sidebar-accent-foreground: 225 20% 96%;
+    --sidebar-border: 234 20% 16%;
+    --sidebar-ring: 190 90% 48%;
   }
 }
 
@@ -162,6 +167,7 @@
   .text-gradient {
     @apply bg-clip-text text-transparent;
     background: var(--gradient-hero);
+    -webkit-text-fill-color: transparent;
   }
 
   .hover-lift {
