@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 
 import Index from "./pages/Index";
@@ -53,7 +54,14 @@ const App = () => (
                 <Route path="/teacher/courses" element={<TeacherCourses />} />
                 <Route path="/teacher/upload" element={<TeacherUpload />} />
                 <Route path="/teacher/submissions" element={<Assignments />} />
-                <Route path="/admin/users" element={<AdminUsers />} />
+                <Route
+                  path="/admin/users"
+                  element={
+                    <ProtectedRoute allowedRoles={["admin"]}>
+                      <AdminUsers />
+                    </ProtectedRoute>
+                  }
+                />
                 <Route path="/admin/courses" element={<Courses />} />
                 <Route path="/admin/analytics" element={<AdminAnalytics />} />
                 <Route path="/settings" element={<Settings />} />
