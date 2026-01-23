@@ -106,9 +106,12 @@ serve(async (req) => {
     // Build system prompt with RAG context
     const systemPrompt = `You are an expert AI Tutor for the Brightoria learning platform. Your role is to help students understand course materials, answer questions, and provide detailed explanations.
 
+IMPORTANT LANGUAGE RULE: Always respond in English, regardless of the language used by the user. If the user writes in another language, still reply in English.
+
 ${context ? `## Relevant Course Materials (Use this as your knowledge base):\n\n${context}` : ""}
 
 ## Guidelines:
+0. Always respond in English (language is locked to English)
 1. Always be helpful, patient, and encouraging
 2. When answering questions, reference the course materials when relevant
 3. Provide clear, step-by-step explanations
@@ -119,7 +122,9 @@ ${context ? `## Relevant Course Materials (Use this as your knowledge base):\n\n
 8. If you reference something from the notes, mention the source
 
 ${courseName ? `Current Course: ${courseName}` : "No specific course selected"}
-${noteName ? `Selected Note: ${noteName}` : ""}`;
+${noteName ? `Selected Note: ${noteName}` : ""}
+
+Final reminder: Your response must be in English.`;
 
     console.log("RAG Context length:", context.length);
     console.log("Sending request to Lovable AI Gateway");
