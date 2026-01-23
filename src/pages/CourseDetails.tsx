@@ -16,6 +16,7 @@ import {
   ArrowLeft
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useMemo, useState } from 'react';
 
 export default function CourseDetails() {
   const { courseId } = useParams();
@@ -24,6 +25,11 @@ export default function CourseDetails() {
   const assignments = mockAssignments.filter(a => a.courseId === courseId);
   const quizzes = mockQuizzes.filter(q => q.courseId === courseId);
   const notes = mockNotes.filter(n => n.courseId === courseId);
+
+  const [tab, setTab] = useState<'lessons' | 'notes' | 'assignments' | 'quizzes'>('lessons');
+
+  const firstLesson = useMemo(() => lessons[0], [lessons]);
+  const firstQuiz = useMemo(() => quizzes[0], [quizzes]);
 
   if (!course) {
     return (
@@ -37,7 +43,7 @@ export default function CourseDetails() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in pb-24 md:pb-0">
       {/* Back Button */}
       <Link to="/courses">
         <Button variant="ghost" size="sm" className="gap-2">
@@ -88,8 +94,14 @@ export default function CourseDetails() {
       </div>
 
       {/* Content Tabs */}
-      <Tabs defaultValue="lessons" className="space-y-6">
-        <TabsList className="w-full justify-start bg-muted/50 p-1 flex flex-wrap h-auto">
+      <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="space-y-6">
+        <TabsList
+          className={cn(
+            "w-full justify-start bg-muted/50 p-1",
+            "flex flex-nowrap h-auto overflow-x-auto",
+            "snap-x snap-mandatory"
+          )}
+        >
           <TabsTrigger value="lessons" className="gap-2">
             <Video className="w-4 h-4" />
             Lessons
@@ -271,6 +283,31 @@ export default function CourseDetails() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Sticky mobile action bar */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40">
+        <div className="border-t border-border bg-background/90 backdrop-blur-xl">
+          <div className="p-3 flex gap-3">
+            <Button
+              variant="secondary"
+              className="flex-1"
+              onClick={() => setTab('lessons')}
+              disabled={!firstLesson}
+            >
+              Continue Lesson
+            </Button>
+            {firstQuiz ? (
+              <Link to={`/quizzes/${firstQuiz.id}`} className="flex-1">
+                <Button className="w-full">Start Quiz</Button>
+              </Link>
+            ) : (
+              <Button className="flex-1" disabled>
+                Start Quiz
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
