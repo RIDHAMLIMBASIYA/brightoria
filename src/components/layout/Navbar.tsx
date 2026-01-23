@@ -2,6 +2,7 @@ import { Bell, Search, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
+import { ThemeToggle } from '@/components/theme/ThemeToggle';
 
 interface NavbarProps {
   onMenuClick?: () => void;
@@ -37,6 +38,7 @@ export function Navbar({ onMenuClick }: NavbarProps) {
 
         {/* Right Side */}
         <div className="flex items-center gap-2">
+          <ThemeToggle />
           <Button variant="ghost" size="icon" className="relative">
             <Bell className="w-5 h-5" />
             <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-accent rounded-full" />
