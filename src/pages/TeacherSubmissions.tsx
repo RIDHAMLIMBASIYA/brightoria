@@ -212,6 +212,61 @@ export default function TeacherSubmissions() {
     }
   };
 
+  const extractUploadsPath = (urlOrPath: string): string | null => {
+    const raw = urlOrPath.trim();
+    if (!raw) return null;
+
+    // Already a storage object path (preferred)
+    if (!raw.startsWith("http")) return raw;
+
+    // Legacy signed URL format: .../storage/v1/object/sign/uploads/<PATH>?token=...
+    const marker = "/object/sign/uploads/";
+    const idx = raw.indexOf(marker);
+    if (idx >= 0) {
+      const after = raw.slice(idx + marker.length);
+      const path = after.split("?")[0];
+      return path || null;
+    }
+
+    // Not an uploads signed URL; leave as-is (best effort)
+    return null;
+  };
+
+  const downloadSubmissionFile = async (urlOrPath: string) => {
+    // If it's already a legacy signed URL and we can't parse it, fall back to opening it.
+    const maybePath = extractUploadsPath(urlOrPath);
+    if (!maybePath) {
+      window.open(urlOrPath, "_blank", "noreferrer");
+      return;
+    }
+
+    try {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error("Not authenticated");
+
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-upload-signed-url`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ path: maybePath }),
+      });
+
+      const json = (await res.json().catch(() => null)) as { signedUrl?: string; error?: string } | null;
+      if (!res.ok) {
+        throw new Error(json?.error || `Request failed (${res.status})`);
+      }
+
+      if (!json?.signedUrl) throw new Error("No download URL returned");
+      window.open(json.signedUrl, "_blank", "noreferrer");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to generate download link");
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
@@ -262,11 +317,13 @@ export default function TeacherSubmissions() {
                   )}
 
                   {r.file_url ? (
-                    <Button asChild variant="outline" className="gap-2">
-                      <a href={r.file_url} target="_blank" rel="noreferrer">
-                        <Download className="w-4 h-4" />
-                        File
-                      </a>
+                    <Button
+                      variant="outline"
+                      className="gap-2"
+                      onClick={() => downloadSubmissionFile(r.file_url!)}
+                    >
+                      <Download className="w-4 h-4" />
+                      File
                     </Button>
                   ) : null}
 

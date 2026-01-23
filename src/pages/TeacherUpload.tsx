@@ -125,16 +125,9 @@ export default function TeacherUpload() {
       return null;
     }
     
-    const { data: signedData, error: signedError } = await supabase.storage
-      .from('uploads')
-      .createSignedUrl(fileName, 60 * 60 * 24 * 7); // 7 days
-
-    if (signedError) {
-      console.error('Signed URL error:', signedError);
-      return null;
-    }
-
-    return signedData.signedUrl;
+    // SECURITY: Store only the object path in the database (not a long-lived signed URL).
+    // A short-lived signed URL is generated on-demand via a protected backend function.
+    return fileName;
   };
 
   const handleUploadNotes = async () => {
