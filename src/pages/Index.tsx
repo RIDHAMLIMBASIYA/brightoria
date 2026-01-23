@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Brain, Users, BookOpen, ArrowRight, CheckCircle, Play } from 'lucide-react';
+import { Brain, Users, BookOpen, ArrowRight, Play } from 'lucide-react';
 import brightoriaLogo from '@/assets/brightoria-logo.png';
+import { ThemeToggle } from '@/components/theme/ThemeToggle';
 
 export default function Index() {
   return (
@@ -22,6 +23,7 @@ export default function Index() {
             <span className="font-display font-bold text-xl">Brightoria</span>
           </Link>
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             <Link to="/login">
               <Button variant="ghost">Sign in</Button>
             </Link>
