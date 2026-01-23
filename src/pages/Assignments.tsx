@@ -4,8 +4,18 @@ import { Badge } from '@/components/ui/badge';
 import { Clock, FileText, Upload, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useEffect, useState } from 'react';
 
 export default function Assignments() {
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Placeholder for future backend loading; gives a consistent skeleton UX.
+    const t = setTimeout(() => setIsLoading(false), 250);
+    return () => clearTimeout(t);
+  }, []);
+
   const assignmentsWithCourse = mockAssignments.map(assignment => ({
     ...assignment,
     course: mockCourses.find(c => c.id === assignment.courseId),
@@ -31,7 +41,34 @@ export default function Assignments() {
       </div>
 
       <div className="space-y-4">
-        {assignmentsWithCourse.map((assignment, index) => {
+        {isLoading ? (
+          Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="bg-card rounded-xl border border-border p-5">
+              <div className="flex flex-col md:flex-row md:items-center gap-4">
+                <Skeleton className="w-12 h-12 rounded-xl" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-5 w-2/3" />
+                  <Skeleton className="h-4 w-1/2" />
+                  <div className="pt-2 flex flex-wrap gap-3">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-4 w-28" />
+                    <Skeleton className="h-4 w-24" />
+                  </div>
+                </div>
+                <Skeleton className="h-10 w-28" />
+              </div>
+            </div>
+          ))
+        ) : assignmentsWithCourse.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
+              <FileText className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <h3 className="font-display font-semibold text-lg mb-2">No assignments yet</h3>
+            <p className="text-muted-foreground max-w-sm">When your teacher posts assignments, they’ll show up here.</p>
+          </div>
+        ) : (
+          assignmentsWithCourse.map((assignment, index) => {
           const daysUntilDue = getDaysUntilDue(assignment.dueDate);
           const isUrgent = daysUntilDue <= 3 && daysUntilDue > 0;
           const isOverdue = daysUntilDue < 0;
@@ -108,7 +145,8 @@ export default function Assignments() {
               </div>
             </div>
           );
-        })}
+        })
+        )}
       </div>
     </div>
   );

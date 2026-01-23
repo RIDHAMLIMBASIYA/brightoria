@@ -6,6 +6,7 @@ import { BookOpen, Loader2, Search } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import type { Course } from '@/types';
 import { toast } from 'sonner';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function Courses() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -141,8 +142,20 @@ export default function Courses() {
 
       {/* Course Grid */}
       {isLoading ? (
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="bg-card rounded-xl border border-border overflow-hidden">
+              <Skeleton className="aspect-video w-full" />
+              <div className="p-5 space-y-3">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-5 w-4/5" />
+                <Skeleton className="h-4 w-3/5" />
+                <div className="pt-2">
+                  <Skeleton className="h-9 w-full" />
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       ) : filteredCourses.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
