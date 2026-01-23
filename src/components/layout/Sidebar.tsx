@@ -12,13 +12,13 @@ import {
   BarChart3,
   Settings,
   LogOut,
-  GraduationCap,
   Upload,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
+import brightoriaLogo from '@/assets/brightoria-logo.png';
 
 interface NavItem {
   label: string;
@@ -62,7 +62,12 @@ export function Sidebar() {
       {/* Logo */}
       <div className="flex items-center gap-3 px-4 py-5 border-b border-sidebar-border">
         <div className="flex-shrink-0 w-10 h-10 rounded-xl hero-gradient flex items-center justify-center shadow-glow">
-          <GraduationCap className="w-6 h-6 text-primary-foreground" />
+          <img
+            src={brightoriaLogo}
+            alt="Brightoria logo"
+            className="w-7 h-7 object-contain"
+            loading="eager"
+          />
         </div>
         {!collapsed && (
           <div className="animate-fade-in">
