@@ -40,13 +40,13 @@ export default function Login() {
         <div className="absolute -top-24 -left-24 h-96 w-96 rounded-full bg-primary/20 blur-3xl" />
         <div className="absolute -bottom-24 -right-24 h-[28rem] w-[28rem] rounded-full bg-accent/20 blur-3xl" />
         <div className="relative z-10 flex flex-col justify-center items-center w-full p-12 text-center">
-          <div className="w-24 h-24 rounded-3xl bg-primary-foreground/15 backdrop-blur-md ring-1 ring-primary-foreground/20 shadow-elegant flex items-center justify-center mb-8 animate-fade-in">
-              <img
-                src={brightoriaLogo}
-                alt="Brightoria logo"
-                className="w-14 h-14 object-contain"
-                loading="eager"
-              />
+          <div className="mb-8 animate-fade-in">
+            <img
+              src={brightoriaLogo}
+              alt="Brightoria logo"
+              className="w-20 h-20 object-contain drop-shadow"
+              loading="eager"
+            />
           </div>
           <h1 className="font-display text-4xl md:text-5xl font-bold text-primary-foreground mb-4 animate-slide-up">
             Brightoria
@@ -76,14 +76,12 @@ export default function Login() {
         <div className="w-full max-w-md animate-scale-in">
           {/* Mobile Logo */}
           <div className="lg:hidden flex items-center gap-3 mb-8 justify-center">
-            <div className="w-14 h-14 rounded-2xl hero-gradient flex items-center justify-center shadow-elegant">
-              <img
-                src={brightoriaLogo}
-                alt="Brightoria logo"
-                className="w-10 h-10 object-contain"
-                loading="eager"
-              />
-            </div>
+            <img
+              src={brightoriaLogo}
+              alt="Brightoria logo"
+              className="w-16 h-16 object-contain drop-shadow"
+              loading="eager"
+            />
             <h1 className="font-display text-2xl font-bold text-foreground">Brightoria</h1>
           </div>
 
