@@ -105,11 +105,16 @@ export default function TeacherUpload() {
       return null;
     }
     
-    const { data: urlData } = supabase.storage
+    const { data: signedData, error: signedError } = await supabase.storage
       .from('uploads')
-      .getPublicUrl(fileName);
-    
-    return urlData.publicUrl;
+      .createSignedUrl(fileName, 60 * 60 * 24 * 7); // 7 days
+
+    if (signedError) {
+      console.error('Signed URL error:', signedError);
+      return null;
+    }
+
+    return signedData.signedUrl;
   };
 
   const handleUploadNotes = async () => {
