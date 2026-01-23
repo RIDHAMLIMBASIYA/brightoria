@@ -15,9 +15,10 @@ import {
   Save
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { ProfileEditorDialog } from '@/components/settings/ProfileEditorDialog';
 
 export default function Settings() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
 
   const handleSave = () => {
     toast.success('Settings saved successfully!');
@@ -48,19 +49,25 @@ export default function Settings() {
               alt={user?.name}
               className="w-20 h-20 rounded-xl ring-2 ring-border"
             />
-            <Button variant="outline" size="sm" className="mt-3 w-full">
-              Change
-            </Button>
+            {user && (
+              <div className="mt-3">
+                <ProfileEditorDialog
+                  user={user}
+                  triggerLabel="Change"
+                  onProfileUpdated={(patch) => updateUser(patch)}
+                />
+              </div>
+            )}
           </div>
           
           <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="name">Full Name</Label>
-              <Input id="name" defaultValue={user?.name} />
+              <Input id="name" value={user?.name || ''} disabled />
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email Address</Label>
-              <Input id="email" type="email" defaultValue={user?.email} />
+              <Input id="email" type="email" value={user?.email || ''} disabled />
             </div>
             <div className="space-y-2">
               <Label>Role</Label>

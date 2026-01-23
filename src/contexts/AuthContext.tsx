@@ -18,6 +18,8 @@ interface AuthContextType {
   register: (name: string, email: string, password: string, role: 'student' | 'teacher' | 'admin') => Promise<void>;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
+  refreshUser: () => Promise<void>;
+  updateUser: (patch: Partial<AuthUser>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -98,6 +100,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  const updateUser = (patch: Partial<AuthUser>) => {
+    setUser((prev) => (prev ? { ...prev, ...patch } : prev));
+  };
+
+  const refreshUser = async () => {
+    const userId = session?.user?.id;
+    const email = session?.user?.email || '';
+    if (!userId) return;
+    await fetchUserProfile(userId, email);
+  };
+
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     
@@ -150,6 +163,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       register,
       logout,
       isAuthenticated: !!session,
+      refreshUser,
+      updateUser,
     }}>
       {children}
     </AuthContext.Provider>
