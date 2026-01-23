@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Brain, Users, BookOpen, ArrowRight, Play } from 'lucide-react';
+import { Brain, Users, BookOpen, ArrowRight } from 'lucide-react';
 import brightoriaLogo from '@/assets/brightoria-logo.png';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 
@@ -50,9 +50,6 @@ export default function Index() {
                 Start Learning Free <ArrowRight className="w-5 h-5" />
               </Button>
             </Link>
-            <Button variant="outline" size="xl" className="gap-2">
-              <Play className="w-5 h-5" /> Watch Demo
-            </Button>
           </div>
           
           {/* Stats */}
