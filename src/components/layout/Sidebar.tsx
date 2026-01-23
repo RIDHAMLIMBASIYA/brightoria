@@ -41,7 +41,14 @@ const navItems: NavItem[] = [
   { label: 'Settings', href: '/settings', icon: Settings, roles: ['student', 'teacher', 'admin'] },
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+  /** Used by the mobile drawer to close when navigating */
+  onNavigate?: () => void;
+  /** When true, the sidebar behaves like a drawer panel (not sticky) */
+  variant?: 'desktop' | 'drawer';
+}
+
+export function Sidebar({ onNavigate, variant = 'desktop' }: SidebarProps) {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
@@ -50,11 +57,13 @@ export function Sidebar() {
 
   const filteredItems = navItems.filter(item => item.roles.includes(user.role));
 
+  const isDrawer = variant === 'drawer';
+
   return (
     <aside
       className={cn(
-        'sidebar-gradient h-screen sticky top-0 flex flex-col border-r border-sidebar-border transition-all duration-300',
-        collapsed ? 'w-16' : 'w-64'
+        'sidebar-gradient h-screen flex flex-col border-r border-sidebar-border transition-all duration-300',
+        isDrawer ? 'w-full' : (collapsed ? 'w-16 sticky top-0' : 'w-64 sticky top-0')
       )}
     >
       {/* Logo */}
@@ -96,7 +105,7 @@ export function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-4 px-2">
+        <nav className="flex-1 overflow-y-auto py-4 px-2">
         <ul className="space-y-1">
           {filteredItems.map((item) => {
             const isActive = location.pathname === item.href;
@@ -104,17 +113,20 @@ export function Sidebar() {
               <li key={item.href}>
                 <Link
                   to={item.href}
+                    onClick={() => onNavigate?.()}
                   className={cn(
                     'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200',
                     isActive
                       ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-glow'
                       : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground',
-                    collapsed && 'justify-center px-2'
+                      !isDrawer && collapsed && 'justify-center px-2'
                   )}
-                  title={collapsed ? item.label : undefined}
+                    title={!isDrawer && collapsed ? item.label : undefined}
                 >
                   <item.icon className={cn('w-5 h-5 flex-shrink-0', isActive && 'animate-scale-in')} />
-                  {!collapsed && <span className="text-sm font-medium">{item.label}</span>}
+                    {(!isDrawer && !collapsed) || isDrawer ? (
+                      <span className="text-sm font-medium">{item.label}</span>
+                    ) : null}
                 </Link>
               </li>
             );
@@ -124,33 +136,39 @@ export function Sidebar() {
 
       {/* Bottom Actions */}
       <div className="p-3 border-t border-sidebar-border space-y-2">
+        {!isDrawer && (
+          <Button
+            variant="ghost"
+            size={collapsed ? 'icon' : 'default'}
+            onClick={() => setCollapsed(!collapsed)}
+            className={cn(
+              'w-full text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent',
+              !collapsed && 'justify-start'
+            )}
+          >
+            {collapsed ? <ChevronRight className="w-5 h-5" /> : (
+              <>
+                <ChevronLeft className="w-5 h-5" />
+                <span>Collapse</span>
+              </>
+            )}
+          </Button>
+        )}
         <Button
           variant="ghost"
-          size={collapsed ? 'icon' : 'default'}
-          onClick={() => setCollapsed(!collapsed)}
-          className={cn(
-            'w-full text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent',
-            !collapsed && 'justify-start'
-          )}
-        >
-          {collapsed ? <ChevronRight className="w-5 h-5" /> : (
-            <>
-              <ChevronLeft className="w-5 h-5" />
-              <span>Collapse</span>
-            </>
-          )}
-        </Button>
-        <Button
-          variant="ghost"
-          size={collapsed ? 'icon' : 'default'}
-          onClick={logout}
+          size={!isDrawer && collapsed ? 'icon' : 'default'}
+          onClick={async () => {
+            await logout();
+            onNavigate?.();
+          }}
           className={cn(
             'w-full text-destructive hover:text-destructive hover:bg-destructive/10',
-            !collapsed && 'justify-start'
+            (!isDrawer && !collapsed) && 'justify-start',
+            isDrawer && 'justify-start'
           )}
         >
           <LogOut className="w-5 h-5" />
-          {!collapsed && <span>Logout</span>}
+          {(!isDrawer && !collapsed) || isDrawer ? <span>Logout</span> : null}
         </Button>
       </div>
     </aside>

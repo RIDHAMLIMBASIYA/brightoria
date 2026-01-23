@@ -89,7 +89,7 @@ export default function CourseDetails() {
 
       {/* Content Tabs */}
       <Tabs defaultValue="lessons" className="space-y-6">
-        <TabsList className="w-full justify-start bg-muted/50 p-1">
+        <TabsList className="w-full justify-start bg-muted/50 p-1 flex flex-wrap h-auto">
           <TabsTrigger value="lessons" className="gap-2">
             <Video className="w-4 h-4" />
             Lessons

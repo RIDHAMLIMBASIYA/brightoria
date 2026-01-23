@@ -42,7 +42,7 @@ export default function Settings() {
           <h2 className="font-display font-semibold text-lg">Profile Information</h2>
         </div>
         
-        <div className="flex items-start gap-6">
+        <div className="flex flex-col sm:flex-row sm:items-start gap-6">
           <div className="flex-shrink-0">
             <img
               src={user?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.name}`}
