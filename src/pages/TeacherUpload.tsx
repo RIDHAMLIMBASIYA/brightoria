@@ -24,6 +24,8 @@ interface Course {
 
 export default function TeacherUpload() {
   const { user } = useAuth();
+  const MAX_FILE_SIZE_MB = 100;
+  const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
   const [courses, setCourses] = useState<Course[]>([]);
   const [selectedCourse, setSelectedCourse] = useState<string>('');
   const [uploadType, setUploadType] = useState<'notes' | 'assignment' | 'quiz'>('notes');
@@ -74,15 +76,33 @@ export default function TeacherUpload() {
     setDragActive(false);
     
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const newFiles = Array.from(e.dataTransfer.files);
-      setFiles(prev => [...prev, ...newFiles]);
+      const incoming = Array.from(e.dataTransfer.files);
+      const accepted = incoming.filter((f) => f.size <= MAX_FILE_SIZE_BYTES);
+      const rejected = incoming.filter((f) => f.size > MAX_FILE_SIZE_BYTES);
+
+      if (rejected.length > 0) {
+        toast.error(`Some files exceed ${MAX_FILE_SIZE_MB}MB and were skipped.`);
+      }
+
+      if (accepted.length > 0) {
+        setFiles((prev) => [...prev, ...accepted]);
+      }
     }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      const newFiles = Array.from(e.target.files);
-      setFiles(prev => [...prev, ...newFiles]);
+      const incoming = Array.from(e.target.files);
+      const accepted = incoming.filter((f) => f.size <= MAX_FILE_SIZE_BYTES);
+      const rejected = incoming.filter((f) => f.size > MAX_FILE_SIZE_BYTES);
+
+      if (rejected.length > 0) {
+        toast.error(`Some files exceed ${MAX_FILE_SIZE_MB}MB and were skipped.`);
+      }
+
+      if (accepted.length > 0) {
+        setFiles((prev) => [...prev, ...accepted]);
+      }
     }
   };
 
@@ -317,7 +337,7 @@ export default function TeacherUpload() {
                   </div>
                   <p className="font-medium mb-1">Drop files here or click to upload</p>
                   <p className="text-sm text-muted-foreground">
-                    PDF, DOC, TXT, Images, Videos (max 20MB)
+                      PDF, DOC, TXT, Images, Videos (max 100MB)
                   </p>
                 </label>
               </div>
