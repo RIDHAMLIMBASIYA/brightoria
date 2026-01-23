@@ -167,7 +167,48 @@
   .text-gradient {
     @apply bg-clip-text text-transparent;
     background: var(--gradient-hero);
+    /* Ensure gradient is clipped to glyphs across browsers */
+    -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+  }
+
+  /* Landing hero ambient blobs (uses theme tokens, adapts to dark mode automatically) */
+  .hero-backdrop {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+  }
+
+  .hero-backdrop::before,
+  .hero-backdrop::after {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    border-radius: 9999px;
+    filter: blur(40px);
+    opacity: 0.6;
+    pointer-events: none;
+    transform: translateZ(0);
+  }
+
+  .hero-backdrop::before {
+    width: min(560px, 70vw);
+    height: min(560px, 70vw);
+    top: -180px;
+    left: -160px;
+    background:
+      radial-gradient(circle at 30% 30%, hsl(var(--accent) / 0.45), transparent 60%),
+      radial-gradient(circle at 70% 70%, hsl(var(--primary) / 0.35), transparent 55%);
+  }
+
+  .hero-backdrop::after {
+    width: min(640px, 78vw);
+    height: min(640px, 78vw);
+    bottom: -220px;
+    right: -220px;
+    background:
+      radial-gradient(circle at 35% 35%, hsl(var(--primary) / 0.40), transparent 60%),
+      radial-gradient(circle at 70% 60%, hsl(var(--accent) / 0.35), transparent 55%);
   }
 
   .hover-lift {
