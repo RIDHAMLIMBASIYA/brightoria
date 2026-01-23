@@ -51,9 +51,30 @@ const App = () => (
                 <Route path="/quizzes/:quizId" element={<QuizAttempt />} />
                 <Route path="/ai-tutor" element={<AITutor />} />
                 <Route path="/doubt-bot" element={<Navigate to="/ai-tutor" replace />} />
-                <Route path="/teacher/courses" element={<TeacherCourses />} />
-                <Route path="/teacher/upload" element={<TeacherUpload />} />
-                <Route path="/teacher/submissions" element={<TeacherSubmissions />} />
+              <Route
+                path="/teacher/courses"
+                element={
+                  <ProtectedRoute allowedRoles={["teacher", "admin"]}>
+                    <TeacherCourses />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/teacher/upload"
+                element={
+                  <ProtectedRoute allowedRoles={["teacher", "admin"]}>
+                    <TeacherUpload />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/teacher/submissions"
+                element={
+                  <ProtectedRoute allowedRoles={["teacher", "admin"]}>
+                    <TeacherSubmissions />
+                  </ProtectedRoute>
+                }
+              />
                 <Route
                   path="/admin/users"
                   element={
@@ -62,8 +83,22 @@ const App = () => (
                     </ProtectedRoute>
                   }
                 />
-                <Route path="/admin/courses" element={<Courses />} />
-                <Route path="/admin/analytics" element={<AdminAnalytics />} />
+              <Route
+                path="/admin/courses"
+                element={
+                  <ProtectedRoute allowedRoles={["admin"]}>
+                    <Courses />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/analytics"
+                element={
+                  <ProtectedRoute allowedRoles={["admin"]}>
+                    <AdminAnalytics />
+                  </ProtectedRoute>
+                }
+              />
                 <Route path="/settings" element={<Settings />} />
               </Route>
 

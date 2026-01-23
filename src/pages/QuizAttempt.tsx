@@ -1,23 +1,124 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { mockQuizzes, mockQuizQuestions } from '@/data/mockData';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Clock, CheckCircle, XCircle, ArrowRight, ArrowLeft, Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+
+type QuizDto = {
+  id: string;
+  title: string;
+  duration: number;
+  totalMarks: number;
+};
+
+type QuestionDto = {
+  id: string;
+  question_text: string;
+  options: string[];
+  marks: number;
+  question_order: number;
+};
+
+type ReviewMap = Record<string, { correct: boolean; correctAnswer: number }>;
 
 export default function QuizAttempt() {
   const { quizId } = useParams();
   const navigate = useNavigate();
-  const quiz = mockQuizzes.find(q => q.id === quizId);
-  const questions = mockQuizQuestions.filter(q => q.quizId === quizId);
+
+  const [quiz, setQuiz] = useState<QuizDto | null>(null);
+  const [questions, setQuestions] = useState<QuestionDto[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [review, setReview] = useState<ReviewMap | null>(null);
   
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [score, setScore] = useState(0);
+
+  const question = questions[currentQuestion];
+
+  const progress = useMemo(() => {
+    if (questions.length === 0) return 0;
+    return ((currentQuestion + 1) / questions.length) * 100;
+  }, [currentQuestion, questions.length]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const load = async () => {
+      if (!quizId) {
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData.session?.access_token;
+        if (!token) {
+          toast.error('Please sign in to take this quiz');
+          navigate('/login', { replace: true });
+          return;
+        }
+
+        const res = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/quiz-attempt`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ action: 'get', quizId }),
+          }
+        );
+
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(payload?.error || 'Failed to load quiz');
+        }
+
+        if (!cancelled) {
+          setQuiz(payload.quiz as QuizDto);
+          setQuestions((payload.questions as QuestionDto[]) || []);
+        }
+      } catch (e: any) {
+        toast.error(e?.message || 'Failed to load quiz');
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    };
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [quizId, navigate]);
+
+  if (isLoading) {
+    return (
+      <div className="max-w-3xl mx-auto space-y-4 animate-fade-in">
+        <div className="bg-card rounded-xl border border-border p-5">
+          <div className="h-5 w-40 bg-muted rounded" />
+          <div className="h-4 w-56 bg-muted rounded mt-3" />
+          <div className="h-2 w-full bg-muted rounded mt-4" />
+        </div>
+        <div className="bg-card rounded-xl border border-border p-6 space-y-3">
+          <div className="h-5 w-24 bg-muted rounded" />
+          <div className="h-6 w-full bg-muted rounded" />
+          <div className="space-y-2">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-14 w-full bg-muted rounded" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!quiz || questions.length === 0) {
     return (
@@ -27,9 +128,6 @@ export default function QuizAttempt() {
       </div>
     );
   }
-
-  const question = questions[currentQuestion];
-  const progress = ((currentQuestion + 1) / questions.length) * 100;
 
   const handleAnswer = (optionIndex: number) => {
     if (isSubmitted) return;
@@ -51,17 +149,37 @@ export default function QuizAttempt() {
     }
   };
 
-  const handleSubmit = () => {
-    const correctAnswers = questions.reduce((acc, q) => {
-      if (answers[q.id] === q.correctAnswer) {
-        return acc + q.marks;
-      }
-      return acc;
-    }, 0);
+  const handleSubmit = async () => {
+    if (!quizId) return;
 
-    setScore(correctAnswers);
-    setIsSubmitted(true);
-    toast.success('Quiz submitted successfully!');
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) {
+        toast.error('Please sign in to submit this quiz');
+        navigate('/login', { replace: true });
+        return;
+      }
+
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/quiz-attempt`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ action: 'submit', quizId, answers }),
+      });
+
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload?.error || 'Failed to submit quiz');
+
+      setScore(payload.score ?? 0);
+      setReview((payload.review ?? null) as ReviewMap | null);
+      setIsSubmitted(true);
+      toast.success('Quiz submitted successfully!');
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to submit quiz');
+    }
   };
 
   if (isSubmitted) {
@@ -96,7 +214,7 @@ export default function QuizAttempt() {
             <h3 className="font-semibold">Question Review</h3>
             <div className="grid grid-cols-5 gap-2">
               {questions.map((q, index) => {
-                const isCorrect = answers[q.id] === q.correctAnswer;
+                  const isCorrect = !!review?.[q.id]?.correct;
                 return (
                   <button
                     key={q.id}
@@ -133,7 +251,7 @@ export default function QuizAttempt() {
         <div className="bg-card rounded-xl border border-border p-6">
           <div className="flex items-center justify-between mb-4">
             <span className="text-sm text-muted-foreground">Question {currentQuestion + 1}</span>
-            {answers[question.id] === question.correctAnswer ? (
+            {review?.[question.id]?.correct ? (
               <Badge variant="success" className="gap-1">
                 <CheckCircle className="w-3 h-3" /> Correct
               </Badge>
@@ -143,14 +261,14 @@ export default function QuizAttempt() {
               </Badge>
             )}
           </div>
-          <p className="font-medium text-lg mb-4">{question.questionText}</p>
+          <p className="font-medium text-lg mb-4">{question.question_text}</p>
           <div className="space-y-3">
             {question.options.map((option, index) => (
               <div
                 key={index}
                 className={cn(
                   'p-4 rounded-lg border-2 transition-all',
-                  index === question.correctAnswer
+                  index === review?.[question.id]?.correctAnswer
                     ? 'border-success bg-success/10'
                     : answers[question.id] === index
                     ? 'border-destructive bg-destructive/10'
@@ -160,7 +278,7 @@ export default function QuizAttempt() {
                 <div className="flex items-center gap-3">
                   <span className={cn(
                     'w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium',
-                    index === question.correctAnswer
+                    index === review?.[question.id]?.correctAnswer
                       ? 'bg-success text-success-foreground'
                       : answers[question.id] === index
                       ? 'bg-destructive text-destructive-foreground'
@@ -169,7 +287,7 @@ export default function QuizAttempt() {
                     {String.fromCharCode(65 + index)}
                   </span>
                   <span>{option}</span>
-                  {index === question.correctAnswer && (
+                  {index === review?.[question.id]?.correctAnswer && (
                     <CheckCircle className="w-5 h-5 text-success ml-auto" />
                   )}
                 </div>
@@ -208,7 +326,7 @@ export default function QuizAttempt() {
           </Badge>
         </div>
         
-        <p className="font-medium text-lg mb-6">{question.questionText}</p>
+        <p className="font-medium text-lg mb-6">{question.question_text}</p>
 
         <div className="space-y-3">
           {question.options.map((option, index) => (
