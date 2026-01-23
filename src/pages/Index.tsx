@@ -35,7 +35,7 @@ export default function Index() {
       </header>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-4">
+      <section className="pt-32 pb-20 px-4 hero-backdrop">
         <div className="container mx-auto text-center">
           <Badge variant="accent" className="mb-6 animate-fade-in">🚀 AI-Powered Learning Platform</Badge>
           <h1 className="font-display text-4xl md:text-6xl lg:text-7xl font-bold max-w-4xl mx-auto leading-tight animate-slide-up">
