@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, User } from 'lucide-react';
 import brightoriaLogo from '@/assets/brightoria-logo.png';
 import { toast } from 'sonner';
+import { validatePassword } from '@/lib/password';
 
 type UserRole = 'student' | 'teacher' | 'admin';
 
@@ -29,8 +30,9 @@ export default function Register() {
       return;
     }
 
-    if (password.length < 6) {
-      toast.error('Password must be at least 6 characters');
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      toast.error(passwordError);
       return;
     }
 
@@ -196,7 +198,7 @@ export default function Register() {
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-10 pr-10"
                   required
-                  minLength={6}
+                  minLength={8}
                 />
                 <button
                   type="button"

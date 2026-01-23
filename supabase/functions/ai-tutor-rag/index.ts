@@ -43,6 +43,62 @@ serve(async (req) => {
       });
     }
 
+    const userId = (claimsData.claims as any)?.sub as string | undefined;
+    if (!userId) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Authorization: students can only use the AI tutor for courses they are enrolled in.
+    if (courseId) {
+      const { data: roleRow } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      const role = roleRow?.role as string | undefined;
+      const isAdmin = role === "admin";
+
+      if (!isAdmin) {
+        const { data: courseRow, error: courseRowError } = await supabase
+          .from("courses")
+          .select("teacher_id")
+          .eq("id", courseId)
+          .maybeSingle();
+
+        if (courseRowError || !courseRow) {
+          return new Response(JSON.stringify({ error: "Course not found" }), {
+            status: 404,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const isTeacherOfCourse = courseRow.teacher_id === userId;
+
+        if (!isTeacherOfCourse) {
+          const { data: enrollment } = await supabase
+            .from("enrollments")
+            .select("id")
+            .eq("course_id", courseId)
+            .eq("student_id", userId)
+            .maybeSingle();
+
+          if (!enrollment) {
+            return new Response(
+              JSON.stringify({ error: "You must be enrolled in this course to use the AI tutor" }),
+              {
+                status: 403,
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+              },
+            );
+          }
+        }
+      }
+    }
+
     // Retrieve context from database
     let context = "";
     let courseName = "";

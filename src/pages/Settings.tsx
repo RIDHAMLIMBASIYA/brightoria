@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,12 +17,57 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ProfileEditorDialog } from '@/components/settings/ProfileEditorDialog';
+import { supabase } from '@/integrations/supabase/client';
+import { validatePassword } from '@/lib/password';
 
 export default function Settings() {
   const { user, updateUser } = useAuth();
 
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+
+  const passwordHelperText = useMemo(() => {
+    if (!newPassword) return 'Use at least 8 chars with upper/lowercase, a number, and a symbol.';
+    const err = validatePassword(newPassword);
+    return err ?? 'Password looks good.';
+  }, [newPassword]);
+
   const handleSave = () => {
-    toast.success('Settings saved successfully!');
+    toast.info('Profile changes are saved automatically. Preferences will be available soon.');
+  };
+
+  const handlePasswordUpdate = async () => {
+    if (!user) return;
+
+    if (!newPassword || !confirmPassword) {
+      toast.error('Please fill in the new password fields');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+
+    const passwordError = validatePassword(newPassword);
+    if (passwordError) {
+      toast.error(passwordError);
+      return;
+    }
+
+    setIsUpdatingPassword(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+
+      toast.success('Password updated successfully');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to update password');
+    } finally {
+      setIsUpdatingPassword(false);
+    }
   };
 
   return (
@@ -139,22 +185,37 @@ export default function Settings() {
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="currentPassword">Current Password</Label>
-              <Input id="currentPassword" type="password" placeholder="••••••••" />
-            </div>
-            <div></div>
-            <div className="space-y-2">
               <Label htmlFor="newPassword">New Password</Label>
-              <Input id="newPassword" type="password" placeholder="••••••••" />
+              <Input
+                id="newPassword"
+                type="password"
+                placeholder="••••••••"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                autoComplete="new-password"
+              />
+              <p className="text-xs text-muted-foreground">{passwordHelperText}</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">Confirm New Password</Label>
-              <Input id="confirmPassword" type="password" placeholder="••••••••" />
+              <Input
+                id="confirmPassword"
+                type="password"
+                placeholder="••••••••"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                autoComplete="new-password"
+              />
             </div>
           </div>
           
-          <Button variant="outline" className="mt-2">
-            Update Password
+          <Button
+            variant="outline"
+            className="mt-2"
+            onClick={handlePasswordUpdate}
+            disabled={isUpdatingPassword}
+          >
+            {isUpdatingPassword ? 'Updating…' : 'Update Password'}
           </Button>
         </div>
 
