@@ -31,12 +31,30 @@ export function UserManagementTable() {
   const load = async (nextPage: number) => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke<ListUsersResponse>("admin-list-users", {
-        body: { page: nextPage, pageSize },
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error("Not authenticated");
+
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-list-users`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ page: nextPage, pageSize }),
       });
-      if (error) throw error;
-      setRows(data?.users ?? []);
-      setHasMore(!!data?.hasMore);
+
+      const json = (await res.json().catch(() => null)) as ListUsersResponse | { error?: string } | null;
+      if (!res.ok) {
+        const message = (json as any)?.error || `Request failed (${res.status})`;
+        throw new Error(message);
+      }
+
+      const payload = json as ListUsersResponse;
+      setRows(payload?.users ?? []);
+      setHasMore(!!payload?.hasMore);
       setPage(nextPage);
     } catch (e: any) {
       toast.error(e?.message ?? "Failed to load users");
