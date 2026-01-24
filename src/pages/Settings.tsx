@@ -28,7 +28,7 @@ export default function Settings() {
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
   const passwordHelperText = useMemo(() => {
-    if (!newPassword) return 'Use at least 8 chars with upper/lowercase, a number, and a symbol.';
+    if (!newPassword) return 'Use at least 12 chars with upper/lowercase, a number, and a symbol.';
     const err = validatePassword(newPassword);
     return err ?? 'Password looks good.';
   }, [newPassword]);

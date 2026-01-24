@@ -13,7 +13,7 @@ import { validatePassword } from "@/lib/password";
 
 const schema = z
   .object({
-    password: z.string().min(8, "Password must be at least 8 characters").max(72, "Password is too long"),
+    password: z.string().min(12, "Password must be at least 12 characters").max(72, "Password is too long"),
     confirmPassword: z.string().min(1, "Please confirm your password"),
   })
   .refine((v) => v.password === v.confirmPassword, {
@@ -47,7 +47,7 @@ export default function ResetPassword() {
   }, []);
 
   const helper = useMemo(() => {
-    if (!password) return "Use at least 8 chars with upper/lowercase, a number, and a symbol.";
+    if (!password) return "Use at least 12 chars with upper/lowercase, a number, and a symbol.";
     const err = validatePassword(password);
     return err ?? "Password looks good.";
   }, [password]);

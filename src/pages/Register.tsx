@@ -98,7 +98,7 @@ export default function Register() {
       return;
     }
 
-    const passwordError = validatePassword(password);
+    const passwordError = validatePassword(password, { email });
     if (passwordError) {
       toast.error(passwordError);
       return;
@@ -400,7 +400,7 @@ export default function Register() {
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-10 pr-10"
                   required
-                  minLength={8}
+                  minLength={12}
                 />
                 <button
                   type="button"
