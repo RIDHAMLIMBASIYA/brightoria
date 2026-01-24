@@ -129,6 +129,12 @@ export default function Register() {
               qualification: qualification.trim() || undefined,
             }),
       });
+      if (role === 'teacher') {
+        toast.success('Account created. Waiting for admin approval.');
+        navigate('/login?pending=1');
+        return;
+      }
+
       toast.success('Account created successfully!');
       navigate('/dashboard');
     } catch (error: any) {

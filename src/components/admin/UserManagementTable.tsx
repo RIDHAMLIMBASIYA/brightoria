@@ -14,7 +14,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Search, Trash2 } from "lucide-react";
+import { Check, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 
@@ -41,6 +41,28 @@ export function UserManagementTable() {
   const [hasMore, setHasMore] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
+  const [approvals, setApprovals] = useState<Record<string, boolean>>({});
+  const [approvingUserId, setApprovingUserId] = useState<string | null>(null);
+
+  const loadApprovals = async (users: AdminUserRow[]) => {
+    const teacherIds = users.filter((u) => u.role === "teacher").map((u) => u.id);
+    if (!teacherIds.length) {
+      setApprovals({});
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("teacher_approvals")
+      .select("user_id, approved")
+      .in("user_id", teacherIds);
+    if (error) throw error;
+
+    const map: Record<string, boolean> = {};
+    (data ?? []).forEach((r: any) => {
+      if (r?.user_id) map[String(r.user_id)] = !!r.approved;
+    });
+    setApprovals(map);
+  };
 
   const load = async (nextPage: number) => {
     setIsLoading(true);
@@ -73,6 +95,7 @@ export function UserManagementTable() {
         role: (u?.role as AdminUserRow["role"]) ?? "student",
       })) as AdminUserRow[];
       setRows(normalized);
+      await loadApprovals(normalized);
       setHasMore(!!payload?.hasMore);
       setPage(nextPage);
     } catch (e: any) {
@@ -141,6 +164,40 @@ export function UserManagementTable() {
     }
   };
 
+  const approveTeacher = async (userId: string) => {
+    setApprovingUserId(userId);
+    try {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      const sessionUserId = sessionData.session?.user?.id;
+      if (!sessionUserId) throw new Error("Not authenticated");
+
+      // Update if record exists; otherwise insert an approved record.
+      const now = new Date().toISOString();
+      const { data: updated, error: updateErr } = await supabase
+        .from("teacher_approvals")
+        .update({ approved: true, approved_at: now, approved_by: sessionUserId })
+        .eq("user_id", userId)
+        .select("user_id")
+        .maybeSingle();
+      if (updateErr) throw updateErr;
+
+      if (!updated) {
+        const { error: insertErr } = await supabase
+          .from("teacher_approvals")
+          .insert({ user_id: userId, approved: true, approved_at: now, approved_by: sessionUserId });
+        if (insertErr) throw insertErr;
+      }
+
+      toast.success("Teacher approved");
+      await loadApprovals(rows);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to approve teacher");
+    } finally {
+      setApprovingUserId(null);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
@@ -169,6 +226,7 @@ export function UserManagementTable() {
               <TableHead className="min-w-[260px]">User</TableHead>
               <TableHead className="min-w-[320px]">Email</TableHead>
               <TableHead className="w-[160px]">Role</TableHead>
+              <TableHead className="w-[180px]">Teacher approval</TableHead>
               <TableHead className="w-[200px]">Created</TableHead>
               <TableHead className="w-[140px] text-right">Actions</TableHead>
             </TableRow>
@@ -197,11 +255,34 @@ export function UserManagementTable() {
                     {u.role}
                   </Badge>
                 </TableCell>
+
+                <TableCell>
+                  {u.role !== "teacher" ? (
+                    <span className="text-sm text-muted-foreground">—</span>
+                  ) : approvals[u.id] ? (
+                    <Badge variant="outline">Approved</Badge>
+                  ) : (
+                    <Badge variant="secondary">Pending</Badge>
+                  )}
+                </TableCell>
                 <TableCell className="text-sm text-muted-foreground">
                   {new Date(u.createdAt).toLocaleString()}
                 </TableCell>
 
                 <TableCell className="text-right">
+                  <div className="flex justify-end gap-2">
+                    {u.role === "teacher" && !approvals[u.id] && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-2"
+                        onClick={() => approveTeacher(u.id)}
+                        disabled={isLoading || approvingUserId === u.id}
+                      >
+                        <Check className="h-4 w-4" />
+                        {approvingUserId === u.id ? "Approving…" : "Approve"}
+                      </Button>
+                    )}
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button
@@ -232,13 +313,14 @@ export function UserManagementTable() {
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
 
             {!isLoading && filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground py-10">
+                <TableCell colSpan={6} className="text-center text-muted-foreground py-10">
                   No users found.
                 </TableCell>
               </TableRow>
@@ -246,7 +328,7 @@ export function UserManagementTable() {
 
             {isLoading && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground py-10">
+                <TableCell colSpan={6} className="text-center text-muted-foreground py-10">
                   Loading…
                 </TableCell>
               </TableRow>
