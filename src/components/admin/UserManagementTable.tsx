@@ -3,7 +3,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 type AdminUserRow = {
@@ -27,6 +38,7 @@ export function UserManagementTable() {
   const [rows, setRows] = useState<AdminUserRow[]>([]);
   const [hasMore, setHasMore] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
 
   const load = async (nextPage: number) => {
     setIsLoading(true);
@@ -87,6 +99,39 @@ export function UserManagementTable() {
     return rows.filter((r) => r.name.toLowerCase().includes(q) || r.email.toLowerCase().includes(q));
   }, [rows, query]);
 
+  const removeUser = async (userId: string) => {
+    setDeletingUserId(userId);
+    try {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error("Not authenticated");
+
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-delete-user`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ userId }),
+      });
+
+      const json = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+      if (!res.ok) {
+        const message = json?.error || `Request failed (${res.status})`;
+        throw new Error(message);
+      }
+
+      toast.success("User removed");
+      await load(page);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to remove user");
+    } finally {
+      setDeletingUserId(null);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
@@ -115,6 +160,7 @@ export function UserManagementTable() {
               <TableHead className="min-w-[260px]">User</TableHead>
               <TableHead className="min-w-[320px]">Email</TableHead>
               <TableHead className="w-[200px]">Created</TableHead>
+              <TableHead className="w-[140px] text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -138,12 +184,45 @@ export function UserManagementTable() {
                 <TableCell className="text-sm text-muted-foreground">
                   {new Date(u.createdAt).toLocaleString()}
                 </TableCell>
+
+                <TableCell className="text-right">
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-2"
+                        disabled={isLoading || deletingUserId === u.id}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Remove
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Remove this user?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This permanently deletes the user account and will remove their access immediately.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel disabled={deletingUserId === u.id}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          onClick={() => removeUser(u.id)}
+                        >
+                          {deletingUserId === u.id ? "Removing…" : "Remove"}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </TableCell>
               </TableRow>
             ))}
 
             {!isLoading && filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={3} className="text-center text-muted-foreground py-10">
+                <TableCell colSpan={4} className="text-center text-muted-foreground py-10">
                   No users found.
                 </TableCell>
               </TableRow>
@@ -151,7 +230,7 @@ export function UserManagementTable() {
 
             {isLoading && (
               <TableRow>
-                <TableCell colSpan={3} className="text-center text-muted-foreground py-10">
+                <TableCell colSpan={4} className="text-center text-muted-foreground py-10">
                   Loading…
                 </TableCell>
               </TableRow>
