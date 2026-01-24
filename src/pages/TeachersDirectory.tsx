@@ -40,7 +40,7 @@ export default function TeachersDirectory() {
     <div className="space-y-6">
       <header className="space-y-2">
         <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground">Teachers Directory</h1>
-        <p className="text-muted-foreground">Browse approved teachers and view their profiles.</p>
+        <p className="text-muted-foreground">Browse teachers and view their profiles.</p>
       </header>
 
       <section className="grid gap-3 md:grid-cols-3">
@@ -87,6 +87,11 @@ export default function TeachersDirectory() {
                     <CardTitle className="text-base truncate">{t.name}</CardTitle>
                     <div className="mt-1 flex flex-wrap gap-2">
                       {t.subject ? <Badge variant="secondary">{t.subject}</Badge> : null}
+                      {t.approvalStatus === "approved" ? (
+                        <Badge variant="outline">Approved</Badge>
+                      ) : (
+                        <Badge variant="outline">Pending</Badge>
+                      )}
                       {typeof t.experienceYears === "number" ? (
                         <Badge variant="outline">{t.experienceYears}+ yrs</Badge>
                       ) : null}
@@ -98,6 +103,7 @@ export default function TeachersDirectory() {
                 <div className="text-sm text-muted-foreground space-y-1">
                   {t.qualification ? <div className="truncate">{t.qualification}</div> : null}
                   {t.university ? <div className="truncate">{t.university}</div> : null}
+                  {t.bio ? <div className="line-clamp-2">{t.bio}</div> : null}
                 </div>
                 <Button asChild className="w-full">
                   <Link to={`/teachers/${t.id}`}>View Profile</Link>
