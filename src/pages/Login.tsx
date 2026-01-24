@@ -7,7 +7,6 @@ import { Label } from '@/components/ui/label';
 import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import brightoriaLogo from '@/assets/brightoria-logo.png';
-import { supabase } from '@/integrations/supabase/client';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -36,23 +35,6 @@ export default function Login() {
     } catch (error: any) {
       toast.error(error.message || 'Invalid email or password');
     } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleGoogleSignIn = async () => {
-    setIsLoading(true);
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/dashboard`,
-        },
-      });
-      if (error) throw error;
-      // Redirect handled by OAuth flow.
-    } catch (e: any) {
-      toast.error(e?.message ?? 'Google sign-in failed');
       setIsLoading(false);
     }
   };
@@ -120,32 +102,6 @@ export default function Login() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={handleGoogleSignIn}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Continuing…
-                  </>
-                ) : (
-                  'Continue with Google'
-                )}
-              </Button>
-
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-border" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">or</span>
-                </div>
-              </div>
-
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <div className="relative">
