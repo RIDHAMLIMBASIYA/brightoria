@@ -1,6 +1,7 @@
 import { Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { UserManagementTable } from "@/components/admin/UserManagementTable";
+import { AddUserDialog } from "@/components/admin/AddUserDialog";
 
 export default function AdminUsers() {
   return (
@@ -14,10 +15,14 @@ export default function AdminUsers() {
             Admin-only access to real user records (name + email)
           </p>
         </div>
-        <Button variant="hero" className="gap-2" disabled>
-          <Users className="w-4 h-4" />
-          Add User (coming soon)
-        </Button>
+        <AddUserDialog
+          trigger={
+            <Button variant="hero" className="gap-2">
+              <Users className="w-4 h-4" />
+              Add User
+            </Button>
+          }
+        />
       </div>
 
       <UserManagementTable />

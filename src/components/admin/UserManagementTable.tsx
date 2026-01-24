@@ -16,11 +16,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 
 type AdminUserRow = {
   id: string;
   name: string;
   email: string;
+  role: "student" | "teacher" | "admin";
   createdAt: string;
 };
 
@@ -96,7 +98,9 @@ export function UserManagementTable() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return rows;
-    return rows.filter((r) => r.name.toLowerCase().includes(q) || r.email.toLowerCase().includes(q));
+    return rows.filter(
+      (r) => r.name.toLowerCase().includes(q) || r.email.toLowerCase().includes(q) || r.role.toLowerCase().includes(q),
+    );
   }, [rows, query]);
 
   const removeUser = async (userId: string) => {
@@ -159,6 +163,7 @@ export function UserManagementTable() {
             <TableRow className="bg-muted/50">
               <TableHead className="min-w-[260px]">User</TableHead>
               <TableHead className="min-w-[320px]">Email</TableHead>
+              <TableHead className="w-[160px]">Role</TableHead>
               <TableHead className="w-[200px]">Created</TableHead>
               <TableHead className="w-[140px] text-right">Actions</TableHead>
             </TableRow>
@@ -180,6 +185,12 @@ export function UserManagementTable() {
                   <p className="truncate" title={u.email}>
                     {u.email}
                   </p>
+                </TableCell>
+
+                <TableCell>
+                  <Badge variant={u.role === "admin" ? "accent" : u.role === "teacher" ? "secondary" : "outline"}>
+                    {u.role}
+                  </Badge>
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">
                   {new Date(u.createdAt).toLocaleString()}
@@ -222,7 +233,7 @@ export function UserManagementTable() {
 
             {!isLoading && filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={4} className="text-center text-muted-foreground py-10">
+                <TableCell colSpan={5} className="text-center text-muted-foreground py-10">
                   No users found.
                 </TableCell>
               </TableRow>
@@ -230,7 +241,7 @@ export function UserManagementTable() {
 
             {isLoading && (
               <TableRow>
-                <TableCell colSpan={4} className="text-center text-muted-foreground py-10">
+                <TableCell colSpan={5} className="text-center text-muted-foreground py-10">
                   Loading…
                 </TableCell>
               </TableRow>
