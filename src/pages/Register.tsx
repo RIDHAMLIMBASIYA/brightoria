@@ -9,7 +9,6 @@ import brightoriaLogo from '@/assets/brightoria-logo.png';
 import { toast } from 'sonner';
 import { validatePassword } from '@/lib/password';
 import { z } from 'zod';
-import { supabase } from '@/integrations/supabase/client';
 
 type UserRole = 'student' | 'teacher' | 'admin';
 
@@ -37,22 +36,6 @@ export default function Register() {
   const [isLoading, setIsLoading] = useState(false);
   const { register } = useAuth();
   const navigate = useNavigate();
-
-  const handleGoogleSignIn = async () => {
-    setIsLoading(true);
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/dashboard`,
-        },
-      });
-      if (error) throw error;
-    } catch (e: any) {
-      toast.error(e?.message ?? 'Google sign-in failed');
-      setIsLoading(false);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -233,32 +216,6 @@ export default function Register() {
           <div className="text-center mb-8">
             <h2 className="font-display text-2xl md:text-3xl font-bold text-foreground">Create account</h2>
             <p className="text-muted-foreground mt-2">Join thousands of learners today</p>
-          </div>
-
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full mb-4"
-            onClick={handleGoogleSignIn}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Continuing…
-              </>
-            ) : (
-              'Continue with Google'
-            )}
-          </Button>
-
-          <div className="relative mb-4">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-border" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">or</span>
-            </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
