@@ -16,6 +16,8 @@ import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import Courses from "./pages/Courses";
 import CourseDetails from "./pages/CourseDetails";
+import TeachersDirectory from "./pages/TeachersDirectory";
+import TeacherProfile from "./pages/TeacherProfile";
 import Assignments from "./pages/Assignments";
 import Quizzes from "./pages/Quizzes";
 import QuizAttempt from "./pages/QuizAttempt";
@@ -50,6 +52,22 @@ const App = () => (
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/courses" element={<Courses />} />
                 <Route path="/courses/:courseId" element={<CourseDetails />} />
+                <Route
+                  path="/teachers"
+                  element={
+                    <ProtectedRoute allowedRoles={["student", "admin"]}>
+                      <TeachersDirectory />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/teachers/:teacherId"
+                  element={
+                    <ProtectedRoute allowedRoles={["student", "admin"]}>
+                      <TeacherProfile />
+                    </ProtectedRoute>
+                  }
+                />
                 <Route path="/assignments" element={<Assignments />} />
                 <Route path="/quizzes" element={<Quizzes />} />
                 <Route path="/quizzes/:quizId" element={<QuizAttempt />} />
