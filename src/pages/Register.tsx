@@ -8,12 +8,27 @@ import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, User } from 'lucide-react
 import brightoriaLogo from '@/assets/brightoria-logo.png';
 import { toast } from 'sonner';
 import { validatePassword } from '@/lib/password';
+import { z } from 'zod';
 
 type UserRole = 'student' | 'teacher' | 'admin';
 
 export default function Register() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+
+  // Student fields
+  const [schoolCollege, setSchoolCollege] = useState('');
+  const [strongSubject, setStrongSubject] = useState('');
+  const [weakSubject, setWeakSubject] = useState('');
+  const [hobbies, setHobbies] = useState('');
+
+  // Teacher fields
+  const [university, setUniversity] = useState('');
+  const [subject, setSubject] = useState('');
+  const [experienceYears, setExperienceYears] = useState('');
+  const [qualification, setQualification] = useState('');
+
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState<UserRole>('student');
@@ -24,6 +39,59 @@ export default function Register() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const phoneSchema = z
+      .string()
+      .trim()
+      .min(7, 'Please enter a valid phone/WhatsApp number')
+      .max(20, 'Phone number is too long')
+      .regex(/^[+()\-\s\d]+$/, 'Phone number can only contain digits and + ( ) -');
+
+    const baseSchema = z.object({
+      name: z.string().trim().min(1, 'Name is required').max(100, 'Name is too long'),
+      email: z.string().trim().email('Please enter a valid email').max(255, 'Email is too long'),
+      phone: phoneSchema,
+    });
+
+    const studentSchema = baseSchema.extend({
+      schoolCollege: z.string().trim().min(1, 'School/College is required').max(150, 'School/College is too long'),
+      strongSubject: z.string().trim().max(80, 'Strong subject is too long').optional().or(z.literal('')),
+      weakSubject: z.string().trim().max(80, 'Weak subject is too long').optional().or(z.literal('')),
+      hobbies: z.string().trim().max(200, 'Hobbies is too long').optional().or(z.literal('')),
+    });
+
+    const teacherSchema = baseSchema.extend({
+      university: z.string().trim().min(1, 'University is required').max(150, 'University is too long'),
+      subject: z.string().trim().max(100, 'Subject is too long').optional().or(z.literal('')),
+      experienceYears: z
+        .string()
+        .trim()
+        .optional()
+        .or(z.literal(''))
+        .refine((v) => v === '' || (/^\d+$/.test(v) && Number(v) >= 0 && Number(v) <= 60), {
+          message: 'Experience must be a number between 0 and 60',
+        }),
+      qualification: z.string().trim().max(120, 'Qualification is too long').optional().or(z.literal('')),
+    });
+
+    const parsed = (role === 'teacher' ? teacherSchema : studentSchema).safeParse({
+      name,
+      email,
+      phone,
+      schoolCollege,
+      strongSubject,
+      weakSubject,
+      hobbies,
+      university,
+      subject,
+      experienceYears,
+      qualification,
+    });
+
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0]?.message || 'Please check the form fields');
+      return;
+    }
     
     if (password !== confirmPassword) {
       toast.error('Passwords do not match');
@@ -39,7 +107,28 @@ export default function Register() {
     setIsLoading(true);
 
     try {
-      await register(name, email, password, role);
+      const hobbiesArray = hobbies
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .slice(0, 20);
+
+      await register(name, email, password, role, {
+        phone: phone.trim(),
+        ...(role === 'student'
+          ? {
+              schoolCollege: schoolCollege.trim(),
+              strongSubject: strongSubject.trim() || undefined,
+              weakSubject: weakSubject.trim() || undefined,
+              hobbies: hobbiesArray.length ? hobbiesArray : undefined,
+            }
+          : {
+              university: university.trim(),
+              subject: subject.trim() || undefined,
+              experienceYears: experienceYears.trim() ? Number(experienceYears.trim()) : undefined,
+              qualification: qualification.trim() || undefined,
+            }),
+      });
       toast.success('Account created successfully!');
       navigate('/dashboard');
     } catch (error: any) {
@@ -157,6 +246,18 @@ export default function Register() {
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="phone">Phone / WhatsApp</Label>
+              <Input
+                id="phone"
+                type="tel"
+                placeholder="+1 555 123 4567"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
               <Label>I want to join as</Label>
               <div className="grid grid-cols-2 gap-3">
                 <button
@@ -185,6 +286,107 @@ export default function Register() {
                 </button>
               </div>
             </div>
+
+            {role === 'student' ? (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="schoolCollege">School / College</Label>
+                  <Input
+                    id="schoolCollege"
+                    type="text"
+                    placeholder="Your school/college name"
+                    value={schoolCollege}
+                    onChange={(e) => setSchoolCollege(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="strongSubject">Strong subject</Label>
+                    <Input
+                      id="strongSubject"
+                      type="text"
+                      placeholder="e.g., Maths"
+                      value={strongSubject}
+                      onChange={(e) => setStrongSubject(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="weakSubject">Weak subject</Label>
+                    <Input
+                      id="weakSubject"
+                      type="text"
+                      placeholder="e.g., Physics"
+                      value={weakSubject}
+                      onChange={(e) => setWeakSubject(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="hobbies">Hobbies (comma-separated)</Label>
+                  <Input
+                    id="hobbies"
+                    type="text"
+                    placeholder="Reading, Cricket, Music"
+                    value={hobbies}
+                    onChange={(e) => setHobbies(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">Example: Reading, Cricket, Music</p>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="university">University</Label>
+                  <Input
+                    id="university"
+                    type="text"
+                    placeholder="Your university name"
+                    value={university}
+                    onChange={(e) => setUniversity(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="subject">Subject</Label>
+                  <Input
+                    id="subject"
+                    type="text"
+                    placeholder="e.g., Mathematics"
+                    value={subject}
+                    onChange={(e) => setSubject(e.target.value)}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="experienceYears">Experience (years)</Label>
+                    <Input
+                      id="experienceYears"
+                      type="number"
+                      min={0}
+                      max={60}
+                      placeholder="e.g., 3"
+                      value={experienceYears}
+                      onChange={(e) => setExperienceYears(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="qualification">Qualification</Label>
+                    <Input
+                      id="qualification"
+                      type="text"
+                      placeholder="e.g., M.Sc, B.Ed"
+                      value={qualification}
+                      onChange={(e) => setQualification(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
