@@ -38,6 +38,8 @@ interface AuthContextType {
   isAuthenticated: boolean;
   refreshUser: () => Promise<void>;
   updateUser: (patch: Partial<AuthUser>) => void;
+  /** Teacher accounts must be approved by an admin before accessing the app. */
+  teacherApprovalStatus: 'unknown' | 'pending' | 'approved';
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -46,9 +48,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [teacherApprovalStatus, setTeacherApprovalStatus] = useState<'unknown' | 'pending' | 'approved'>('unknown');
 
-  const fetchUserProfile = async (userId: string, email: string, metadata?: any) => {
+  const ensureTeacherApprovalRecord = async (userId: string) => {
+    // Teachers can insert their own pending approval; admins can manage all.
+    const { data: existing, error: existingErr } = await supabase
+      .from('teacher_approvals')
+      .select('user_id, approved')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (existingErr) throw existingErr;
+    if (existing) return existing;
+
+    const { data: inserted, error: insertErr } = await supabase
+      .from('teacher_approvals')
+      .insert({
+        user_id: userId,
+        approved: false,
+        approved_at: null,
+        approved_by: null,
+      })
+      .select('user_id, approved')
+      .maybeSingle();
+    if (insertErr) throw insertErr;
+    return inserted ?? { user_id: userId, approved: false };
+  };
+
+  const fetchUserProfile = async (
+    userId: string,
+    email: string,
+    metadata?: any,
+  ): Promise<{ blocked: boolean }> => {
     try {
+      setTeacherApprovalStatus('unknown');
+
       // Fetch profile
       const { data: profile } = await supabase
         .from('profiles')
@@ -90,12 +123,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .eq('user_id', userId)
         .maybeSingle();
 
+      const role = (roleData?.role as 'student' | 'teacher' | 'admin') || 'student';
+
+      // Teacher approval gating: teachers must be approved to remain signed in.
+      if (role === 'teacher') {
+        const approval = await ensureTeacherApprovalRecord(userId);
+        if (!approval?.approved) {
+          setTeacherApprovalStatus('pending');
+          // Sign out immediately to block access.
+          await supabase.auth.signOut();
+          setUser(null);
+          setSession(null);
+          return { blocked: true };
+        }
+        setTeacherApprovalStatus('approved');
+      } else {
+        setTeacherApprovalStatus('approved');
+      }
+
       if (profile) {
         setUser({
           id: userId,
           name: profile.name || email,
           email: email,
-          role: (roleData?.role as 'student' | 'teacher' | 'admin') || 'student',
+          role,
           avatar: profile.avatar_url || undefined,
         });
       } else {
@@ -104,11 +155,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           id: userId,
           name: email.split('@')[0],
           email: email,
-          role: (roleData?.role as 'student' | 'teacher' | 'admin') || 'student',
+          role,
         });
       }
+
+      return { blocked: false };
     } catch (error) {
       console.error('Error fetching user profile:', error);
+      return { blocked: false };
     }
   };
 
@@ -159,7 +213,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -167,6 +221,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) {
       setIsLoading(false);
       throw new Error(error.message);
+    }
+
+    // Immediately gate teacher accounts (avoid brief navigation to protected pages).
+    const userId = data.user?.id;
+    const userEmail = data.user?.email || email;
+    if (userId) {
+      const { blocked } = await fetchUserProfile(userId, userEmail, data.user?.user_metadata);
+      if (blocked) {
+        setIsLoading(false);
+        throw new Error('Your teacher account is pending admin approval.');
+      }
     }
   };
 
@@ -216,6 +281,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
+    setTeacherApprovalStatus('unknown');
   };
 
   return (
@@ -229,6 +295,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: !!session,
       refreshUser,
       updateUser,
+      teacherApprovalStatus,
     }}>
       {children}
     </AuthContext.Provider>
