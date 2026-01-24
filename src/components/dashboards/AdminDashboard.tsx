@@ -5,9 +5,11 @@ import { Badge } from '@/components/ui/badge';
 import { Users, BookOpen, BarChart3, Activity, UserCheck, Clock, TrendingUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { useAdminStats } from '@/hooks/useAdminStats';
 
 export function AdminDashboard() {
   const analytics = mockAnalytics;
+  const { stats } = useAdminStats();
 
   const chartData = analytics.userActivity.map(item => ({
     hour: `${item.hour}:00`,
@@ -30,6 +32,10 @@ export function AdminDashboard() {
           <p className="text-muted-foreground mt-1">
             Monitor platform performance and user activity
           </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <Badge variant="outline">Charts use mock data</Badge>
+            <Badge variant="outline">Totals are live</Badge>
+          </div>
         </div>
         <div className="flex gap-3">
           <Link to="/admin/users">
@@ -51,29 +57,29 @@ export function AdminDashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatsCard
           title="Total Users"
-          value={analytics.totalUsers.toLocaleString()}
+          value={(stats?.totalUsers ?? analytics.totalUsers).toLocaleString()}
           change="+12% this month"
           changeType="positive"
           icon={Users}
         />
         <StatsCard
           title="Active Now"
-          value={analytics.activeUsers}
-          change="Real-time"
+          value="—"
+          change="N/A"
           changeType="neutral"
           icon={Activity}
           iconColor="text-success"
         />
         <StatsCard
           title="Total Courses"
-          value={analytics.totalCourses}
+          value={stats?.totalCourses ?? analytics.totalCourses}
           change="+8 this month"
           changeType="positive"
           icon={BookOpen}
         />
         <StatsCard
           title="Enrollments"
-          value={analytics.totalEnrollments.toLocaleString()}
+          value={(stats?.totalEnrollments ?? analytics.totalEnrollments).toLocaleString()}
           change="+23% growth"
           changeType="positive"
           icon={TrendingUp}
