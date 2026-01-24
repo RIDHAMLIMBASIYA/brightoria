@@ -41,6 +41,11 @@ export default function TeacherProfile() {
               <CardTitle className="text-xl truncate">{data.name}</CardTitle>
               <div className="mt-2 flex flex-wrap gap-2">
                 {data.subject ? <Badge variant="secondary">{data.subject}</Badge> : null}
+                {data.approvalStatus === "approved" ? (
+                  <Badge variant="outline">Approved</Badge>
+                ) : (
+                  <Badge variant="outline">Pending approval</Badge>
+                )}
                 {typeof data.experienceYears === "number" ? (
                   <Badge variant="outline">{data.experienceYears}+ yrs experience</Badge>
                 ) : null}
@@ -49,6 +54,10 @@ export default function TeacherProfile() {
           </div>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-1 md:col-span-2">
+            <div className="text-sm text-muted-foreground">Email</div>
+            <div className="font-medium text-foreground">{data.email ?? "—"}</div>
+          </div>
           <div className="space-y-1">
             <div className="text-sm text-muted-foreground">Qualification</div>
             <div className="font-medium text-foreground">{data.qualification ?? "—"}</div>
@@ -60,6 +69,10 @@ export default function TeacherProfile() {
           <div className="space-y-1">
             <div className="text-sm text-muted-foreground">Joined</div>
             <div className="font-medium text-foreground">{format(new Date(data.joinedAt), "PPP")}</div>
+          </div>
+          <div className="space-y-1 md:col-span-2">
+            <div className="text-sm text-muted-foreground">About</div>
+            <div className="font-medium text-foreground whitespace-pre-wrap">{data.bio ?? "—"}</div>
           </div>
         </CardContent>
       </Card>
