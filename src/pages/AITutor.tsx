@@ -34,13 +34,45 @@ export default function AITutor() {
     async function fetchCourses() {
       setLoadingCourses(true);
       try {
-        const { data, error } = await supabase
+        // Students: only show enrolled courses to avoid 403 from AI Tutor authorization.
+        if (user?.role === 'student') {
+          const { data: enrollmentRows, error: enrollError } = await supabase
+            .from('enrollments')
+            .select('course_id')
+            .eq('student_id', user.id);
+
+          if (enrollError) throw enrollError;
+
+          const courseIds = (enrollmentRows ?? [])
+            .map((r: any) => r.course_id as string)
+            .filter(Boolean);
+
+          if (courseIds.length === 0) {
+            setCourses([]);
+            setSelectedCourse(null);
+            setSelectedNote(null);
+            return;
+          }
+
+          const { data: courseRows, error: coursesError } = await supabase
+            .from('courses')
+            .select('id, title, category, description')
+            .in('id', courseIds)
+            .order('created_at', { ascending: false });
+
+          if (coursesError) throw coursesError;
+          setCourses(courseRows || []);
+          return;
+        }
+
+        // Teachers/Admins: show all courses (teachers can access their own; admins can access all)
+        const { data: courseRows, error: coursesError } = await supabase
           .from('courses')
           .select('id, title, category, description')
           .order('created_at', { ascending: false });
 
-        if (error) throw error;
-        setCourses(data || []);
+        if (coursesError) throw coursesError;
+        setCourses(courseRows || []);
       } catch (error) {
         console.error('Error fetching courses:', error);
       } finally {
