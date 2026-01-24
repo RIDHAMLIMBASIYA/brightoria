@@ -2,7 +2,7 @@ import { AIChatWindow } from '@/components/ai/AIChatWindow';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { BookOpen, FileText, ChevronRight, Loader2, Database } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -28,40 +28,37 @@ export default function AITutor() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [loadingCourses, setLoadingCourses] = useState(true);
   const [loadingNotes, setLoadingNotes] = useState(false);
+  const [enrolledCourseIds, setEnrolledCourseIds] = useState<Set<string>>(new Set());
+  const [isEnrolling, setIsEnrolling] = useState(false);
 
   // Fetch enrolled courses for students or all courses
   useEffect(() => {
     async function fetchCourses() {
       setLoadingCourses(true);
       try {
-        // Students: only show enrolled courses to avoid 403 from AI Tutor authorization.
+        // Students: load all courses, but track enrollment so we can gate AI usage.
         if (user?.role === 'student') {
-          const { data: enrollmentRows, error: enrollError } = await supabase
-            .from('enrollments')
-            .select('course_id')
-            .eq('student_id', user.id);
+          const [{ data: enrollmentRows, error: enrollError }, { data: courseRows, error: coursesError }] =
+            await Promise.all([
+              supabase.from('enrollments').select('course_id').eq('student_id', user.id),
+              supabase
+                .from('courses')
+                .select('id, title, category, description')
+                .order('created_at', { ascending: false }),
+            ]);
 
           if (enrollError) throw enrollError;
+          if (coursesError) throw coursesError;
 
-          const courseIds = (enrollmentRows ?? [])
-            .map((r: any) => r.course_id as string)
-            .filter(Boolean);
+          const ids = new Set<string>((enrollmentRows ?? []).map((r: any) => r.course_id as string).filter(Boolean));
+          setEnrolledCourseIds(ids);
+          setCourses(courseRows || []);
 
-          if (courseIds.length === 0) {
-            setCourses([]);
+          // If currently selected course is no longer enrolled, clear it
+          if (selectedCourse && !ids.has(selectedCourse)) {
             setSelectedCourse(null);
             setSelectedNote(null);
-            return;
           }
-
-          const { data: courseRows, error: coursesError } = await supabase
-            .from('courses')
-            .select('id, title, category, description')
-            .in('id', courseIds)
-            .order('created_at', { ascending: false });
-
-          if (coursesError) throw coursesError;
-          setCourses(courseRows || []);
           return;
         }
 
@@ -81,7 +78,30 @@ export default function AITutor() {
     }
 
     fetchCourses();
-  }, [user]);
+  }, [user, selectedCourse]);
+
+  const canUseSelectedCourse = useMemo(() => {
+    if (!selectedCourse) return false;
+    if (user?.role !== 'student') return true;
+    return enrolledCourseIds.has(selectedCourse);
+  }, [enrolledCourseIds, selectedCourse, user?.role]);
+
+  const enrollInSelectedCourse = async () => {
+    if (!user || user.role !== 'student' || !selectedCourse) return;
+    setIsEnrolling(true);
+    try {
+      const { error } = await supabase.from('enrollments').insert({
+        course_id: selectedCourse,
+        student_id: user.id,
+      });
+      if (error) throw error;
+      setEnrolledCourseIds((prev) => new Set(prev).add(selectedCourse));
+    } catch (e) {
+      console.error('Enrollment failed:', e);
+    } finally {
+      setIsEnrolling(false);
+    }
+  };
 
   // Fetch notes when course is selected
   useEffect(() => {
@@ -166,6 +186,9 @@ export default function AITutor() {
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm line-clamp-1">{course.title}</p>
                         <p className="text-xs text-muted-foreground">{course.category}</p>
+                        {user?.role === 'student' && !enrolledCourseIds.has(course.id) ? (
+                          <p className="text-[11px] text-muted-foreground mt-1">Enroll to use AI Tutor</p>
+                        ) : null}
                       </div>
                       <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                     </div>
@@ -174,6 +197,25 @@ export default function AITutor() {
               </div>
             )}
           </div>
+
+          {user?.role === 'student' && selectedCourse && !canUseSelectedCourse ? (
+            <div className="bg-card rounded-xl border border-border p-5 animate-slide-up space-y-3">
+              <h3 className="font-display font-semibold">Enrollment required</h3>
+              <p className="text-sm text-muted-foreground">
+                You must enroll in this course before using the AI Tutor with its materials.
+              </p>
+              <Button onClick={enrollInSelectedCourse} disabled={isEnrolling} className="w-full">
+                {isEnrolling ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Enrolling…
+                  </>
+                ) : (
+                  'Enroll now'
+                )}
+              </Button>
+            </div>
+          ) : null}
 
           {selectedCourse && (
             <div className="bg-card rounded-xl border border-border p-5 animate-slide-up">
@@ -242,7 +284,7 @@ export default function AITutor() {
               : 'Select a course to get started'}
             placeholder="Ask me anything about your course..."
             variant="tutor"
-            courseId={selectedCourse}
+              courseId={canUseSelectedCourse ? selectedCourse : null}
             noteId={selectedNote}
           />
         </div>
