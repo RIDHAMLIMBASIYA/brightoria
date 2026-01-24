@@ -67,7 +67,12 @@ export function UserManagementTable() {
       }
 
       const payload = json as ListUsersResponse;
-      setRows(payload?.users ?? []);
+      // Backward compatibility: older deployments may not include `role` yet.
+      const normalized = (payload?.users ?? []).map((u: any) => ({
+        ...u,
+        role: (u?.role as AdminUserRow["role"]) ?? "student",
+      })) as AdminUserRow[];
+      setRows(normalized);
       setHasMore(!!payload?.hasMore);
       setPage(nextPage);
     } catch (e: any) {
