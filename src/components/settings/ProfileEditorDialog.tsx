@@ -22,12 +22,22 @@ interface ProfileEditorDialogProps {
 
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024; // 5MB
 
+function buildPresetAvatarUrls(seedBase: string, count: number) {
+  // Dicebear is already used as a fallback in the app, so we reuse it for consistent styling.
+  // Using a fixed preset list gives users a predictable “pick one” gallery.
+  return Array.from({ length: count }, (_, i) => {
+    const seed = encodeURIComponent(`${seedBase}-${i + 1}`);
+    return `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed}`;
+  });
+}
+
 export function ProfileEditorDialog({ user, onProfileUpdated, triggerLabel = "Edit" }: ProfileEditorDialogProps) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(user.name);
   const [email, setEmail] = useState(user.email);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isSettingPresetAvatar, setIsSettingPresetAvatar] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   const avatarSrc = useMemo(
@@ -41,7 +51,29 @@ export function ProfileEditorDialog({ user, onProfileUpdated, triggerLabel = "Ed
     setEmail(user.email);
   }, [open, user.name, user.email]);
 
+  const presetAvatars = useMemo(() => buildPresetAvatarUrls(user.name || user.id, 15), [user.id, user.name]);
+  const currentAvatar = user.avatar || avatarSrc;
+
   const pickAvatar = () => fileRef.current?.click();
+
+  const setAvatarUrl = async (url: string) => {
+    setIsSettingPresetAvatar(true);
+    try {
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({ avatar_url: url })
+        .eq("user_id", user.id);
+
+      if (profileError) throw profileError;
+
+      onProfileUpdated({ avatar: url });
+      toast.success("Avatar updated.");
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to update avatar.");
+    } finally {
+      setIsSettingPresetAvatar(false);
+    }
+  };
 
   const uploadAvatar = async (file: File) => {
     if (!file.type.startsWith("image/")) {
@@ -149,6 +181,33 @@ export function ProfileEditorDialog({ user, onProfileUpdated, triggerLabel = "Ed
               alt={`${user.name} avatar`}
               className="w-24 h-24 rounded-xl ring-2 ring-border object-cover"
             />
+
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">Choose an avatar</p>
+              <div className="grid grid-cols-5 gap-2">
+                {presetAvatars.map((url) => {
+                  const selected = currentAvatar === url;
+                  return (
+                    <button
+                      key={url}
+                      type="button"
+                      onClick={() => setAvatarUrl(url)}
+                      disabled={isUploading || isSettingPresetAvatar}
+                      className={
+                        "relative aspect-square overflow-hidden rounded-lg ring-1 ring-border transition focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60" +
+                        (selected ? " ring-2 ring-primary" : " hover:ring-2 hover:ring-ring")
+                      }
+                      aria-label={selected ? "Selected avatar" : "Select avatar"}
+                    >
+                      <img src={url} alt="Preset avatar" className="h-full w-full object-cover" loading="lazy" />
+                      {selected ? <span className="sr-only">Selected</span> : null}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-muted-foreground">Or upload your own image below.</p>
+            </div>
+
             <input
               ref={fileRef}
               type="file"
@@ -162,7 +221,7 @@ export function ProfileEditorDialog({ user, onProfileUpdated, triggerLabel = "Ed
               size="sm"
               className="w-full gap-2"
               onClick={pickAvatar}
-              disabled={isUploading}
+              disabled={isUploading || isSettingPresetAvatar}
             >
               {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
               Change
@@ -189,7 +248,7 @@ export function ProfileEditorDialog({ user, onProfileUpdated, triggerLabel = "Ed
         </div>
 
         <DialogFooter>
-          <Button onClick={saveName} disabled={isSaving || isUploading} className="gap-2">
+          <Button onClick={saveName} disabled={isSaving || isUploading || isSettingPresetAvatar} className="gap-2">
             {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
             Save
           </Button>
