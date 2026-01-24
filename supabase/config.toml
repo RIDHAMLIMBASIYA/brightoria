@@ -15,5 +15,8 @@ verify_jwt = false
 [functions.admin-stats]
 verify_jwt = false
 
+[functions.admin-analytics]
+verify_jwt = false
+
 [functions.quiz-attempt]
 verify_jwt = false

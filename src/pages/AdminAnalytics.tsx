@@ -2,6 +2,7 @@ import { mockAnalytics, mockCourses } from '@/data/mockData';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAdminStats } from '@/hooks/useAdminStats';
+import { useAdminAnalytics } from '@/hooks/useAdminAnalytics';
 import { 
   Users, 
   BookOpen, 
@@ -31,33 +32,53 @@ import {
 export default function AdminAnalytics() {
   const analytics = mockAnalytics;
   const { stats } = useAdminStats();
+  const { data: real, isLoading: isLoadingReal } = useAdminAnalytics();
 
-  const chartData = analytics.userActivity.map(item => ({
-    hour: `${item.hour}:00`,
-    users: item.count,
-  }));
+  const chartData = (real?.userActivity24h?.length
+    ? real.userActivity24h.map((item) => ({
+        hour: new Date(item.isoHour).toISOString().slice(11, 16),
+        users: item.count,
+      }))
+    : analytics.userActivity.map((item) => ({
+        hour: `${item.hour}:00`,
+        users: item.count,
+      }))
+  );
 
-  const courseData = mockCourses.map(course => ({
-    name: course.title.substring(0, 20) + '...',
-    students: course.enrolledCount,
-    lessons: course.lessonsCount,
-  }));
+  const courseData = (real?.enrollmentsByCourse?.length
+    ? real.enrollmentsByCourse.map((c) => ({
+        name: c.title.length > 20 ? c.title.substring(0, 20) + '...' : c.title,
+        students: c.students,
+        lessons: c.lessons,
+      }))
+    : mockCourses.map((course) => ({
+        name: course.title.substring(0, 20) + '...',
+        students: course.enrolledCount,
+        lessons: course.lessonsCount,
+      }))
+  );
 
   const roleData = [
-    { name: 'Students', value: analytics.totalStudents, color: 'hsl(186 72% 32%)' },
-    { name: 'Teachers', value: analytics.totalTeachers, color: 'hsl(38 92% 50%)' },
-    { name: 'Admins', value: 5, color: 'hsl(199 89% 48%)' },
+    { name: 'Students', value: real?.roleBreakdown?.students ?? analytics.totalStudents, color: 'hsl(186 72% 32%)' },
+    { name: 'Teachers', value: real?.roleBreakdown?.teachers ?? analytics.totalTeachers, color: 'hsl(38 92% 50%)' },
+    { name: 'Admins', value: real?.roleBreakdown?.admins ?? 5, color: 'hsl(199 89% 48%)' },
   ];
 
-  const weeklyData = [
-    { day: 'Mon', users: 145, quizzes: 23, assignments: 12 },
-    { day: 'Tue', users: 189, quizzes: 34, assignments: 18 },
-    { day: 'Wed', users: 167, quizzes: 28, assignments: 15 },
-    { day: 'Thu', users: 198, quizzes: 31, assignments: 22 },
-    { day: 'Fri', users: 234, quizzes: 45, assignments: 28 },
-    { day: 'Sat', users: 156, quizzes: 19, assignments: 8 },
-    { day: 'Sun', users: 134, quizzes: 15, assignments: 5 },
-  ];
+  const weeklyData = (real?.weekly?.length
+    ? real.weekly.map((d) => {
+        const day = new Date(d.date + 'T00:00:00Z').toLocaleDateString(undefined, { weekday: 'short' });
+        return { day, users: d.users, quizzes: d.quizzes, assignments: d.assignments };
+      })
+    : [
+        { day: 'Mon', users: 145, quizzes: 23, assignments: 12 },
+        { day: 'Tue', users: 189, quizzes: 34, assignments: 18 },
+        { day: 'Wed', users: 167, quizzes: 28, assignments: 15 },
+        { day: 'Thu', users: 198, quizzes: 31, assignments: 22 },
+        { day: 'Fri', users: 234, quizzes: 45, assignments: 28 },
+        { day: 'Sat', users: 156, quizzes: 19, assignments: 8 },
+        { day: 'Sun', users: 134, quizzes: 15, assignments: 5 },
+      ]
+  );
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -70,7 +91,8 @@ export default function AdminAnalytics() {
             Comprehensive platform insights and metrics
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <Badge variant="outline">Charts use mock data</Badge>
+            <Badge variant="outline">Charts are live</Badge>
+            {isLoadingReal && <Badge variant="outline">Loading…</Badge>}
             <Badge variant="outline">Totals are live</Badge>
           </div>
         </div>
