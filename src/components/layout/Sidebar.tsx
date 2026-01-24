@@ -7,6 +7,7 @@ import {
   FileText,
   ClipboardList,
   Brain,
+  UserRound,
   Users,
   BarChart3,
   Settings,
@@ -29,6 +30,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['student', 'teacher', 'admin'] },
   { label: 'My Courses', href: '/courses', icon: BookOpen, roles: ['student', 'teacher'] },
+  { label: 'All Teachers', href: '/teachers', icon: UserRound, roles: ['student'] },
   { label: 'Assignments', href: '/assignments', icon: FileText, roles: ['student'] },
   { label: 'Quizzes', href: '/quizzes', icon: ClipboardList, roles: ['student'] },
   { label: 'AI Tutor', href: '/ai-tutor', icon: Brain, roles: ['student'] },
