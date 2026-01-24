@@ -1,52 +1,74 @@
 
-<context>
-You’re seeing the AI chat reply in another language (French) because the AI model often mirrors the user’s input language automatically. Right now, our backend chat function (`ai-tutor-rag`) does not force a response language, so if a user writes French, the model may answer in French.
+Context from your screenshot
+- You are on Backend → Users → Auth.
+- On this screen, “Leaked password protection” is not shown directly.
+- There is an “Advanced” row with a chevron (>) at the bottom. In many setups, password security options are inside that “Advanced” section or inside the Email provider settings page.
 
-You selected: “Always English”.
-</context>
+Goal
+- Help you locate and enable “Leaked Password Protection” (also called “compromised password checks” / “password breach detection”) using only what your Backend UI exposes.
+- If your current Lovable Cloud UI does not expose that toggle, provide a safe fallback so your app still blocks weak/leaked-style passwords (without relying on hidden backend settings).
 
-<goal>
-Make all AI chat responses (Doubt Bot + AI Tutor + Notes chat) always return in English, even when the user writes in another language.
-</goal>
+Step-by-step: try to find the setting in the UI you have
+1) Open the Email sign-in method settings
+   - Backend → Users → Auth
+   - Under “Sign in methods”, click the “Email” row (or click the small arrow/chevron on the right of that row)
+   - Look for sections with names like:
+     - “Security”
+     - “Password”
+     - “Password policy”
+     - “Password protection”
+     - “Breach / compromised password”
+     - “Leaked password protection”
+   - If you find a “Leaked password protection” toggle:
+     - Turn it ON
+     - Click Save/Apply (if there is a save button)
 
-<approach>
-We will enforce English at the backend prompt level (recommended), so it applies consistently to every client and cannot be bypassed by frontend changes.
+2) Open “Advanced” on the Auth page (most likely location in your screenshot)
+   - Go back to Backend → Users → Auth (the page shown in your screenshot)
+   - Click “Advanced” (the row at the bottom with a chevron)
+   - Look for a subsection named:
+     - “Password security”
+     - “Password policy”
+     - “Security”
+     - “Attack protection”
+   - If you find “Leaked password protection”, enable it and save.
 
-Why backend:
-- The chat UI already uses English labels (“Thinking…”, placeholders, etc.). The issue is the AI response language.
-- The safest single source of truth is the backend system prompt.
-</approach>
+3) Check if there is a general settings area within Users
+   - Still in Backend → Users
+   - Look for a gear icon (Settings) or “…” menu on the top-right of the Users/Auth screen
+   - Check if it contains “Security” or “Authentication settings”
 
-<implementation-steps>
-1) Update the backend function prompt to force English
-   - Edit: `supabase/functions/ai-tutor-rag/index.ts`
-   - In the `systemPrompt` “Guidelines” section, add an explicit rule such as:
-     - “Always respond in English. If the user asks in another language, respond in English.”
-   - Make it strong and unambiguous, near the top of the guidelines so it has high priority.
+4) Conclusion if you still can’t find it
+   - If after Step 1–3 you cannot find any toggle related to password breach/leaked protection, then your current Lovable Cloud UI likely does not expose that setting.
+   - In that case, I cannot enable it for you via code, because it’s a backend authentication configuration (not a table/policy change and not an in-app UI change).
 
-2) (Optional but recommended) Add an additional “language lock” sentence near the end of the system prompt
-   - This reduces the chance the model ignores it when context is long (RAG materials can be large).
+Safe fallback (recommended if the toggle is not available): enforce strong passwords in the app
+If the backend UI doesn’t expose “leaked password protection”, we can still significantly reduce risk by enforcing strong passwords in the Register flow.
 
-3) Verify behavior in the app
-   - Open `/doubt-bot` and ask in French, Arabic, etc.
-   - Confirm the assistant answers in English.
-   - Repeat on `/ai-tutor` (with a selected course/note) to confirm RAG answers remain English.
+What I will implement once you approve (code changes)
+A) Enforce strong password rules on registration (frontend validation)
+- Update Register page validation so passwords must meet strong rules, e.g.:
+  - Minimum length (e.g., 10–12)
+  - Must include uppercase, lowercase, number, and symbol
+  - Block common weak patterns (e.g., “password”, “123456”, “qwerty”, “admin”, email local-part)
+- Show clear error messages inline so users know how to fix their password.
+- This does not require any backend UI settings.
 
-4) Regression checks
-   - Ensure streaming still works (no changes to streaming code).
-   - Ensure error handling (429/402/500) still returns correctly.
-</implementation-steps>
+B) Optional: server-side check against leaked passwords (only if you want it)
+- True “leaked password” detection usually requires a breach database/API (often a paid key).
+- If you want this level of protection, we can add a backend function that checks passwords at signup time.
+- This may require adding a secret/API key depending on provider, and we will not proceed until you approve and provide the key.
+- If you prefer not to use external services, we can skip this and rely on strong password rules.
 
-<files-to-change>
-- `supabase/functions/ai-tutor-rag/index.ts` (system prompt text only)
-</files-to-change>
+How we will verify
+1) UI verification
+- You confirm whether you can find the setting under Email or Advanced.
+- If you find it, you enable it, and we’re done for that part.
 
-<acceptance-criteria>
-- If a user writes “Explique moi…” or any non-English question, the assistant replies in English 100% of the time.
-- No UI text changes are required; only AI output language changes.
-- No impact on authentication, RAG retrieval, or streaming.
-</acceptance-criteria>
+2) App verification (fallback)
+- Try registering with a weak password → app blocks it with an explanation.
+- Try registering with a strong password → signup succeeds.
+- Existing users are unaffected (only impacts new password creation).
 
-<notes>
-Later, if you ever want a real language setting (English/French/Spanish) tied to Settings, we can extend the backend to accept a “preferredLanguage” and store it in the database. For now, we’ll hard-lock to English as requested.
-</notes>
+What I need from you (one quick confirmation)
+- When you click “Advanced” on that Auth page, do you see anything about “Password policy / Password security”? If yes, tell me what options you see (just the headings is enough).
