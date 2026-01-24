@@ -140,13 +140,8 @@ export default function Login() {
                   <span className="text-muted-foreground">Remember me</span>
                 </label>
                 <Link
-                  to="#"
+                  to="/forgot-password"
                   className="text-primary font-medium hover:underline"
-                  onClick={(e) => {
-                    // UI-only placeholder to avoid changing auth flows
-                    e.preventDefault();
-                    toast.message('Password reset is coming soon.');
-                  }}
                 >
                   Forgot password?
                 </Link>
