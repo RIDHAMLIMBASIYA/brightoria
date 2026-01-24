@@ -106,6 +106,31 @@ serve(async (req) => {
       if (row?.user_id) nameByUserId.set(row.user_id, row.name ?? "");
     }
 
+    const { data: roles, error: rolesError } = await adminClient
+      .from("user_roles")
+      .select("user_id, role")
+      .in("user_id", userIds);
+
+    if (rolesError) {
+      return new Response(JSON.stringify({ error: rolesError.message }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const bestRoleByUserId = new Map<string, string>();
+    const priority: Record<string, number> = { admin: 3, teacher: 2, student: 1 };
+    for (const r of roles ?? []) {
+      const row = r as any;
+      const uid = row?.user_id as string | undefined;
+      const role = row?.role as string | undefined;
+      if (!uid || !role) continue;
+      const existing = bestRoleByUserId.get(uid);
+      if (!existing || (priority[role] ?? 0) > (priority[existing] ?? 0)) {
+        bestRoleByUserId.set(uid, role);
+      }
+    }
+
     const results = authUsers.map((u) => ({
       id: u.id,
       email: u.email ?? "",
@@ -113,6 +138,7 @@ serve(async (req) => {
         nameByUserId.get(u.id) ||
         (u.user_metadata?.name as string | undefined) ||
         (u.email ? u.email.split("@")[0] : ""),
+      role: bestRoleByUserId.get(u.id) ?? "student",
       createdAt: u.created_at,
     }));
 
