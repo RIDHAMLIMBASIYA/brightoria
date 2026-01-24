@@ -1,6 +1,7 @@
 import { mockAnalytics, mockCourses } from '@/data/mockData';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useAdminStats } from '@/hooks/useAdminStats';
 import { 
   Users, 
   BookOpen, 
@@ -29,6 +30,7 @@ import {
 
 export default function AdminAnalytics() {
   const analytics = mockAnalytics;
+  const { stats } = useAdminStats();
 
   const chartData = analytics.userActivity.map(item => ({
     hour: `${item.hour}:00`,
@@ -67,6 +69,10 @@ export default function AdminAnalytics() {
           <p className="text-muted-foreground mt-1">
             Comprehensive platform insights and metrics
           </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <Badge variant="outline">Charts use mock data</Badge>
+            <Badge variant="outline">Totals are live</Badge>
+          </div>
         </div>
         <div className="flex gap-3">
           <Button variant="outline" className="gap-2">
@@ -86,7 +92,7 @@ export default function AdminAnalytics() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">Total Users</p>
-              <p className="text-3xl font-bold font-display">{analytics.totalUsers.toLocaleString()}</p>
+              <p className="text-3xl font-bold font-display">{(stats?.totalUsers ?? analytics.totalUsers).toLocaleString()}</p>
               <p className="text-xs text-success mt-1">+12.5% from last month</p>
             </div>
             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -98,7 +104,7 @@ export default function AdminAnalytics() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">Total Courses</p>
-              <p className="text-3xl font-bold font-display">{analytics.totalCourses}</p>
+              <p className="text-3xl font-bold font-display">{stats?.totalCourses ?? analytics.totalCourses}</p>
               <p className="text-xs text-success mt-1">+8 new this month</p>
             </div>
             <div className="w-12 h-12 rounded-xl bg-accent/20 flex items-center justify-center">
@@ -110,8 +116,8 @@ export default function AdminAnalytics() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">Active Now</p>
-              <p className="text-3xl font-bold font-display text-success">{analytics.activeUsers}</p>
-              <p className="text-xs text-muted-foreground mt-1">Real-time count</p>
+              <p className="text-3xl font-bold font-display text-success">—</p>
+              <p className="text-xs text-muted-foreground mt-1">N/A</p>
             </div>
             <div className="w-12 h-12 rounded-xl bg-success/20 flex items-center justify-center">
               <Activity className="w-6 h-6 text-success" />
@@ -122,7 +128,7 @@ export default function AdminAnalytics() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">Enrollments</p>
-              <p className="text-3xl font-bold font-display">{analytics.totalEnrollments.toLocaleString()}</p>
+              <p className="text-3xl font-bold font-display">{(stats?.totalEnrollments ?? analytics.totalEnrollments).toLocaleString()}</p>
               <p className="text-xs text-success mt-1">+23% growth rate</p>
             </div>
             <div className="w-12 h-12 rounded-xl bg-info/20 flex items-center justify-center">

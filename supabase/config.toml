@@ -12,5 +12,8 @@ verify_jwt = false
 [functions.admin-create-user]
 verify_jwt = false
 
+[functions.admin-stats]
+verify_jwt = false
+
 [functions.quiz-attempt]
 verify_jwt = false
