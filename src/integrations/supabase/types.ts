@@ -244,26 +244,53 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string
+          experience_years: number | null
+          hobbies: string[] | null
           id: string
           name: string
+          phone: string | null
+          qualification: string | null
+          school_college: string | null
+          strong_subject: string | null
+          subject: string | null
+          university: string | null
           updated_at: string
           user_id: string
+          weak_subject: string | null
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string
+          experience_years?: number | null
+          hobbies?: string[] | null
           id?: string
           name: string
+          phone?: string | null
+          qualification?: string | null
+          school_college?: string | null
+          strong_subject?: string | null
+          subject?: string | null
+          university?: string | null
           updated_at?: string
           user_id: string
+          weak_subject?: string | null
         }
         Update: {
           avatar_url?: string | null
           created_at?: string
+          experience_years?: number | null
+          hobbies?: string[] | null
           id?: string
           name?: string
+          phone?: string | null
+          qualification?: string | null
+          school_college?: string | null
+          strong_subject?: string | null
+          subject?: string | null
+          university?: string | null
           updated_at?: string
           user_id?: string
+          weak_subject?: string | null
         }
         Relationships: []
       }

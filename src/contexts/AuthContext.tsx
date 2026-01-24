@@ -10,12 +10,30 @@ interface AuthUser {
   avatar?: string;
 }
 
+type ProfileExtras = {
+  phone?: string;
+  schoolCollege?: string;
+  strongSubject?: string;
+  weakSubject?: string;
+  hobbies?: string[];
+  university?: string;
+  subject?: string;
+  experienceYears?: number;
+  qualification?: string;
+};
+
 interface AuthContextType {
   user: AuthUser | null;
   session: Session | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string, role: 'student' | 'teacher' | 'admin') => Promise<void>;
+  register: (
+    name: string,
+    email: string,
+    password: string,
+    role: 'student' | 'teacher' | 'admin',
+    extras?: ProfileExtras
+  ) => Promise<void>;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
   refreshUser: () => Promise<void>;
@@ -29,7 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchUserProfile = async (userId: string, email: string) => {
+  const fetchUserProfile = async (userId: string, email: string, metadata?: any) => {
     try {
       // Fetch profile
       const { data: profile } = await supabase
@@ -37,6 +55,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .select('*')
         .eq('user_id', userId)
         .maybeSingle();
+
+      // If profile doesn't exist yet, create it from auth metadata (safe due to RLS)
+      if (!profile && metadata) {
+        const toTextArray = (v: any) => {
+          if (!v) return null;
+          if (Array.isArray(v)) return v.map(String).map((s) => s.trim()).filter(Boolean);
+          if (typeof v === 'string') return v.split(',').map((s) => s.trim()).filter(Boolean);
+          return null;
+        };
+
+        await supabase
+          .from('profiles')
+          .insert({
+            user_id: userId,
+            name: metadata?.name || email,
+            avatar_url: metadata?.avatar_url,
+            phone: metadata?.phone,
+            school_college: metadata?.school_college,
+            strong_subject: metadata?.strong_subject,
+            weak_subject: metadata?.weak_subject,
+            hobbies: toTextArray(metadata?.hobbies),
+            university: metadata?.university,
+            subject: metadata?.subject,
+            experience_years: typeof metadata?.experience_years === 'number' ? metadata.experience_years : undefined,
+            qualification: metadata?.qualification,
+          });
+      }
 
       // Fetch role
       const { data: roleData } = await supabase
@@ -76,7 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (session?.user) {
           // Defer profile fetch to avoid deadlock
           setTimeout(() => {
-            fetchUserProfile(session.user.id, session.user.email || '');
+            fetchUserProfile(session.user.id, session.user.email || '', session.user.user_metadata);
           }, 0);
         } else {
           setUser(null);
@@ -91,7 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session);
       
       if (session?.user) {
-        fetchUserProfile(session.user.id, session.user.email || '');
+        fetchUserProfile(session.user.id, session.user.email || '', session.user.user_metadata);
       }
       
       setIsLoading(false);
@@ -108,7 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const userId = session?.user?.id;
     const email = session?.user?.email || '';
     if (!userId) return;
-    await fetchUserProfile(userId, email);
+    await fetchUserProfile(userId, email, session?.user?.user_metadata);
   };
 
   const login = async (email: string, password: string) => {
@@ -125,10 +170,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const register = async (name: string, email: string, password: string, role: 'student' | 'teacher' | 'admin') => {
+  const register = async (
+    name: string,
+    email: string,
+    password: string,
+    role: 'student' | 'teacher' | 'admin',
+    extras?: ProfileExtras
+  ) => {
     setIsLoading(true);
     
     const redirectUrl = `${window.location.origin}/`;
+
+    const payload = {
+      name,
+      role,
+      ...(extras?.phone ? { phone: extras.phone } : {}),
+      ...(extras?.schoolCollege ? { school_college: extras.schoolCollege } : {}),
+      ...(extras?.strongSubject ? { strong_subject: extras.strongSubject } : {}),
+      ...(extras?.weakSubject ? { weak_subject: extras.weakSubject } : {}),
+      ...(extras?.hobbies?.length ? { hobbies: extras.hobbies } : {}),
+      ...(extras?.university ? { university: extras.university } : {}),
+      ...(extras?.subject ? { subject: extras.subject } : {}),
+      ...(typeof extras?.experienceYears === 'number' ? { experience_years: extras.experienceYears } : {}),
+      ...(extras?.qualification ? { qualification: extras.qualification } : {}),
+    };
     
     const { error } = await supabase.auth.signUp({
       email,
@@ -136,8 +201,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       options: {
         emailRedirectTo: redirectUrl,
         data: {
-          name,
-          role,
+          ...payload,
         },
       },
     });
