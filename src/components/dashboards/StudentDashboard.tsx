@@ -4,6 +4,9 @@ import { StatsCard } from '@/components/dashboard/StatsCard';
 import { CourseCard } from '@/components/courses/CourseCard';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/integrations/supabase/client';
+import type { LiveClassRow } from '@/components/live-classes/types';
+import { useQuery } from '@tanstack/react-query';
 import { BookOpen, ClipboardList, Brain, Trophy, Calendar, ArrowRight, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -13,6 +16,22 @@ export function StudentDashboard() {
   const enrolledCourses = mockCourses.slice(0, 3);
   const upcomingAssignments = mockAssignments.filter(a => a.status === 'open').slice(0, 3);
   const recentQuizzes = mockQuizzes.slice(0, 2);
+
+  const { data: liveClasses = [] } = useQuery({
+    queryKey: ['student-live-classes'],
+    queryFn: async (): Promise<LiveClassRow[]> => {
+      const { data, error } = await supabase
+        .from('live_classes')
+        .select('*')
+        // show currently live first, then scheduled
+        .in('status', ['live', 'scheduled'])
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+      if (error) throw error;
+      return (data ?? []) as LiveClassRow[];
+    },
+  });
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -91,6 +110,52 @@ export function StudentDashboard() {
 
         {/* Sidebar Content */}
         <div className="space-y-6">
+          {/* Live Classes */}
+          <div className="bg-card rounded-xl border border-border p-5">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="font-display font-semibold">Live Classes</h3>
+              <Link to="/live-classes">
+                <Button variant="ghost" size="sm" className="gap-1">
+                  View <ArrowRight className="w-4 h-4" />
+                </Button>
+              </Link>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              {liveClasses.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No live classes right now. Check back later.
+                </p>
+              ) : (
+                liveClasses.map((c) => (
+                  <Link
+                    key={c.id}
+                    to="/live-classes"
+                    className="block rounded-lg border border-border p-3 hover:bg-muted/40 transition"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm truncate">{c.title}</p>
+                        <p className="text-xs text-muted-foreground mt-1 truncate">
+                          {c.provider === 'brightoria_webrtc' ? 'In-app room' : 'External link'}
+                        </p>
+                      </div>
+                      <Badge variant={c.status === 'live' ? 'default' : 'secondary'} className="shrink-0 capitalize">
+                        {c.status}
+                      </Badge>
+                    </div>
+                  </Link>
+                ))
+              )}
+            </div>
+
+            <Link to="/live-classes" className="block mt-4">
+              <Button variant="outline" size="sm" className="w-full">
+                Go to Live Classes
+              </Button>
+            </Link>
+          </div>
+
           {/* Upcoming Assignments */}
           <div className="bg-card rounded-xl border border-border p-5">
             <h3 className="font-display font-semibold mb-4 flex items-center gap-2">
