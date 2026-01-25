@@ -40,10 +40,13 @@ export default function LiveClassModerationActions({ liveClass, onUpdated, onDel
   }, [user, liveClass.created_by]);
 
   const [editOpen, setEditOpen] = useState(false);
-  const [meetingUrl, setMeetingUrl] = useState(liveClass.meeting_url);
+  const [meetingUrl, setMeetingUrl] = useState(liveClass.meeting_url ?? "");
   const [isSaving, setIsSaving] = useState(false);
   const [isEnding, setIsEnding] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const isExternal = liveClass.provider === "external";
+  const canOpenExternal = isExternal && !!liveClass.meeting_url;
 
   const saveMeetingUrl = async () => {
     if (!canModerate) {
@@ -132,12 +135,13 @@ export default function LiveClassModerationActions({ liveClass, onUpdated, onDel
   };
 
   if (!canModerate) {
+    if (!canOpenExternal) return null;
     return (
       <Button
         variant="outline"
         size="sm"
         className="gap-2"
-        onClick={() => window.open(liveClass.meeting_url, "_blank", "noreferrer")}
+        onClick={() => window.open(liveClass.meeting_url!, "_blank", "noreferrer")}
       >
         <ExternalLink className="w-4 h-4" />
         Open in new tab
@@ -147,20 +151,24 @@ export default function LiveClassModerationActions({ liveClass, onUpdated, onDel
 
   return (
     <div className="flex items-center gap-2">
-      <Button
-        variant="outline"
-        size="sm"
-        className="gap-2"
-        onClick={() => window.open(liveClass.meeting_url, "_blank", "noreferrer")}
-      >
-        <ExternalLink className="w-4 h-4" />
-        Open
-      </Button>
+      {canOpenExternal ? (
+        <>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={() => window.open(liveClass.meeting_url!, "_blank", "noreferrer")}
+          >
+            <ExternalLink className="w-4 h-4" />
+            Open
+          </Button>
 
-      <Button variant="outline" size="sm" className="gap-2" onClick={() => setEditOpen(true)}>
-        <Pencil className="w-4 h-4" />
-        Edit link
-      </Button>
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => setEditOpen(true)}>
+            <Pencil className="w-4 h-4" />
+            Edit link
+          </Button>
+        </>
+      ) : null}
 
       <AlertDialog>
         <AlertDialogTrigger asChild>
@@ -216,7 +224,7 @@ export default function LiveClassModerationActions({ liveClass, onUpdated, onDel
         open={editOpen}
         onOpenChange={(v) => {
           setEditOpen(v);
-          if (v) setMeetingUrl(liveClass.meeting_url);
+          if (v) setMeetingUrl(liveClass.meeting_url ?? "");
         }}
       >
         <DialogContent className="sm:max-w-lg">
