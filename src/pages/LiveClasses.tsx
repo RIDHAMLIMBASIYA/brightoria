@@ -16,7 +16,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 
 import LiveClassModerationActions from "@/components/live-classes/LiveClassModerationActions";
-import type { LiveClassRow, LiveClassStatus } from "@/components/live-classes/types";
+import type { LiveClassRow } from "@/components/live-classes/types";
+import LiveClassListItem from "@/components/live-classes/LiveClassListItem";
 
 const createLiveClassSchema = z.object({
   title: z.string().trim().min(1, "Title is required").max(140, "Max 140 characters"),
@@ -30,11 +31,11 @@ const createLiveClassSchema = z.object({
     .refine((v) => v.startsWith("http://") || v.startsWith("https://"), "URL must start with http(s)"),
 });
 
-function statusBadgeVariant(status: LiveClassStatus): "default" | "secondary" | "outline" {
-  if (status === "live") return "default";
-  if (status === "scheduled") return "secondary";
-  return "outline";
-}
+type PublicProfile = {
+  user_id: string;
+  name: string | null;
+  avatar_url: string | null;
+};
 
 export default function LiveClasses() {
   const { user } = useAuth();
@@ -61,6 +62,26 @@ export default function LiveClasses() {
 
       if (error) throw error;
       return (data ?? []) as LiveClassRow[];
+    },
+  });
+
+  const creatorIds = useMemo(() => {
+    return Array.from(new Set(classes.map((c) => c.created_by))).filter(Boolean);
+  }, [classes]);
+
+  const { data: creatorsById = new Map<string, PublicProfile>() } = useQuery({
+    queryKey: ["live-class-creators", creatorIds.join(",")],
+    enabled: creatorIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles_public")
+        .select("user_id,name,avatar_url")
+        .in("user_id", creatorIds);
+
+      if (error) throw error;
+
+      const rows = (data ?? []) as PublicProfile[];
+      return new Map(rows.map((p) => [p.user_id, p] as const));
     },
   });
 
@@ -173,24 +194,12 @@ export default function LiveClasses() {
                 <p className="text-sm text-muted-foreground">No active classes right now.</p>
               ) : (
                 liveNow.map((c) => (
-                  <button
+                  <LiveClassListItem
                     key={c.id}
-                    type="button"
-                    onClick={() => setActive(c)}
-                    className="w-full text-left rounded-lg border border-border p-3 hover:bg-muted/40 transition"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="font-medium truncate">{c.title}</p>
-                        {c.description ? (
-                          <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{c.description}</p>
-                        ) : null}
-                      </div>
-                      <Badge variant={statusBadgeVariant(c.status)} className="shrink-0 capitalize">
-                        {c.status}
-                      </Badge>
-                    </div>
-                  </button>
+                    liveClass={c}
+                    creator={creatorsById.get(c.created_by)}
+                    onSelect={() => setActive(c)}
+                  />
                 ))
               )}
             </CardContent>
@@ -210,26 +219,18 @@ export default function LiveClasses() {
                 <p className="text-sm text-muted-foreground">No scheduled or ended classes.</p>
               ) : (
                 upcomingOrOther.map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => setActive(c)}
-                    className="w-full text-left rounded-lg border border-border p-3 hover:bg-muted/40 transition"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="font-medium truncate">{c.title}</p>
-                        {c.starts_at ? (
-                          <p className="text-xs text-muted-foreground mt-1">Starts: {new Date(c.starts_at).toLocaleString()}</p>
-                        ) : (
-                          <p className="text-xs text-muted-foreground mt-1">Created: {new Date(c.created_at).toLocaleString()}</p>
-                        )}
-                      </div>
-                      <Badge variant={statusBadgeVariant(c.status)} className="shrink-0 capitalize">
-                        {c.status}
-                      </Badge>
-                    </div>
-                  </button>
+                  <div key={c.id} className="space-y-2">
+                    <LiveClassListItem
+                      liveClass={c}
+                      creator={creatorsById.get(c.created_by)}
+                      onSelect={() => setActive(c)}
+                    />
+                    <p className="px-1 text-xs text-muted-foreground">
+                      {c.starts_at
+                        ? `Starts: ${new Date(c.starts_at).toLocaleString()}`
+                        : `Created: ${new Date(c.created_at).toLocaleString()}`}
+                    </p>
+                  </div>
                 ))
               )}
             </CardContent>
