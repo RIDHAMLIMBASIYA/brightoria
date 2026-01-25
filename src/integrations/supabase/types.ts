@@ -202,6 +202,45 @@ export type Database = {
           },
         ]
       }
+      live_classes: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          ends_at: string | null
+          id: string
+          meeting_url: string
+          starts_at: string | null
+          status: Database["public"]["Enums"]["live_class_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          ends_at?: string | null
+          id?: string
+          meeting_url: string
+          starts_at?: string | null
+          status?: Database["public"]["Enums"]["live_class_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          ends_at?: string | null
+          id?: string
+          meeting_url?: string
+          starts_at?: string | null
+          status?: Database["public"]["Enums"]["live_class_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notes: {
         Row: {
           content: string | null
@@ -485,6 +524,7 @@ export type Database = {
     }
     Enums: {
       app_role: "student" | "teacher" | "admin"
+      live_class_status: "scheduled" | "live" | "ended"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -613,6 +653,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["student", "teacher", "admin"],
+      live_class_status: ["scheduled", "live", "ended"],
     },
   },
 } as const
