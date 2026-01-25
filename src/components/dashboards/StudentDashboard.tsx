@@ -4,12 +4,27 @@ import { StatsCard } from '@/components/dashboard/StatsCard';
 import { CourseCard } from '@/components/courses/CourseCard';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
 import type { LiveClassRow } from '@/components/live-classes/types';
 import { useQuery } from '@tanstack/react-query';
 import { BookOpen, ClipboardList, Brain, Trophy, Calendar, ArrowRight, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
+import { useMemo } from 'react';
+
+type PublicProfile = {
+  user_id: string;
+  name: string | null;
+  avatar_url: string | null;
+};
+
+type CreatorRole = 'teacher' | 'admin';
+
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/).slice(0, 2);
+  return parts.map((p) => p[0]?.toUpperCase()).join('') || 'U';
+}
 
 export function StudentDashboard() {
   const { user } = useAuth();
@@ -29,6 +44,46 @@ export function StudentDashboard() {
 
       if (error) throw error;
       return (data ?? []) as LiveClassRow[];
+    },
+  });
+
+  const creatorIds = useMemo(() => {
+    return Array.from(new Set(liveClasses.map((c) => c.created_by))).filter(Boolean);
+  }, [liveClasses]);
+
+  const { data: creatorsById = new Map<string, PublicProfile>() } = useQuery({
+    queryKey: ['student-live-class-creators', creatorIds.join(',')],
+    enabled: creatorIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profiles_public')
+        .select('user_id,name,avatar_url')
+        .in('user_id', creatorIds);
+      if (error) throw error;
+      const rows = (data ?? []) as PublicProfile[];
+      return new Map(rows.map((p) => [p.user_id, p] as const));
+    },
+  });
+
+  const { data: creatorRolesById = new Map<string, CreatorRole>() } = useQuery({
+    queryKey: ['student-live-class-creator-roles', creatorIds.join(',')],
+    enabled: creatorIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select('user_id,role')
+        .in('user_id', creatorIds)
+        .in('role', ['teacher', 'admin']);
+
+      if (error) throw error;
+
+      const rows = (data ?? []) as { user_id: string; role: CreatorRole }[];
+      const map = new Map<string, CreatorRole>();
+      for (const r of rows) {
+        const prev = map.get(r.user_id);
+        if (!prev || (prev === 'teacher' && r.role === 'admin')) map.set(r.user_id, r.role);
+      }
+      return map;
     },
   });
 
@@ -133,7 +188,37 @@ export function StudentDashboard() {
                       <div className="min-w-0">
                         <p className="text-xs text-muted-foreground">Happening now</p>
                         <p className="font-display font-semibold text-base truncate mt-1">{liveClasses[0]?.title}</p>
-                        <p className="text-xs text-muted-foreground mt-1 truncate">
+                        <div className="mt-2 flex items-center gap-2 min-w-0">
+                          {(() => {
+                            const lc = liveClasses[0];
+                            if (!lc) return null;
+                            const creator = creatorsById.get(lc.created_by);
+                            const role = creatorRolesById.get(lc.created_by);
+                            const name = (creator?.name ?? '').trim() || 'Unknown';
+                            return (
+                              <>
+                                <Avatar className="h-6 w-6">
+                                  <AvatarImage
+                                    src={creator?.avatar_url ?? undefined}
+                                    alt={creator?.name ? `${creator.name} avatar` : 'Host avatar'}
+                                  />
+                                  <AvatarFallback className="text-[10px]">{initials(name)}</AvatarFallback>
+                                </Avatar>
+                                <p className="text-xs text-muted-foreground truncate">{name}</p>
+                                {role ? (
+                                  <Badge
+                                    variant={role === 'admin' ? 'default' : 'secondary'}
+                                    className="h-5 px-2 text-[10px] capitalize"
+                                  >
+                                    {role}
+                                  </Badge>
+                                ) : null}
+                              </>
+                            );
+                          })()}
+                        </div>
+
+                        <p className="text-xs text-muted-foreground mt-2 truncate">
                           {liveClasses[0]?.provider === 'brightoria_webrtc' ? 'In-app room' : 'External link'}
                         </p>
                       </div>
