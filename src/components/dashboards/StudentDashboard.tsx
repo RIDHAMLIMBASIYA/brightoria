@@ -18,15 +18,14 @@ export function StudentDashboard() {
   const recentQuizzes = mockQuizzes.slice(0, 2);
 
   const { data: liveClasses = [] } = useQuery({
-    queryKey: ['student-live-classes'],
+    queryKey: ['student-live-classes-live-only'],
     queryFn: async (): Promise<LiveClassRow[]> => {
       const { data, error } = await supabase
         .from('live_classes')
         .select('*')
-        // show currently live first, then scheduled
-        .in('status', ['live', 'scheduled'])
+        .eq('status', 'live')
         .order('created_at', { ascending: false })
-        .limit(3);
+        .limit(6);
 
       if (error) throw error;
       return (data ?? []) as LiveClassRow[];
@@ -127,25 +126,45 @@ export function StudentDashboard() {
                   No live classes right now. Check back later.
                 </p>
               ) : (
-                liveClasses.map((c) => (
-                  <Link
-                    key={c.id}
-                    to="/live-classes"
-                    className="block rounded-lg border border-border p-3 hover:bg-muted/40 transition"
-                  >
+                <>
+                  {/* Primary CTA */}
+                  <div className="rounded-xl border border-border p-4 bg-muted/30">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="font-medium text-sm truncate">{c.title}</p>
+                        <p className="text-xs text-muted-foreground">Happening now</p>
+                        <p className="font-display font-semibold text-base truncate mt-1">{liveClasses[0]?.title}</p>
                         <p className="text-xs text-muted-foreground mt-1 truncate">
-                          {c.provider === 'brightoria_webrtc' ? 'In-app room' : 'External link'}
+                          {liveClasses[0]?.provider === 'brightoria_webrtc' ? 'In-app room' : 'External link'}
                         </p>
                       </div>
-                      <Badge variant={c.status === 'live' ? 'default' : 'secondary'} className="shrink-0 capitalize">
-                        {c.status}
-                      </Badge>
+                      <Badge variant="default" className="shrink-0">LIVE</Badge>
                     </div>
-                  </Link>
-                ))
+                    <div className="mt-4">
+                      <Button asChild variant="hero" className="w-full">
+                        <Link to={`/live-classes?classId=${encodeURIComponent(liveClasses[0].id)}`}>Join now</Link>
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Other live sessions */}
+                  {liveClasses.slice(1, 4).map((c) => (
+                    <Link
+                      key={c.id}
+                      to={`/live-classes?classId=${encodeURIComponent(c.id)}`}
+                      className="block rounded-lg border border-border p-3 hover:bg-muted/40 transition"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="font-medium text-sm truncate">{c.title}</p>
+                          <p className="text-xs text-muted-foreground mt-1 truncate">
+                            {c.provider === 'brightoria_webrtc' ? 'In-app room' : 'External link'}
+                          </p>
+                        </div>
+                        <Badge variant="default" className="shrink-0">LIVE</Badge>
+                      </div>
+                    </Link>
+                  ))}
+                </>
               )}
             </div>
 

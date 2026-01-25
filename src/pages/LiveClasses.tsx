@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -6,6 +6,7 @@ import { Plus, Video, X } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSearchParams } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -66,6 +67,8 @@ type CreatorRole = "teacher" | "admin";
 export default function LiveClasses() {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const didAutoSelectRef = useRef(false);
 
   const canCreate = user?.role === "teacher" || user?.role === "admin";
 
@@ -162,6 +165,23 @@ export default function LiveClasses() {
     const upcomingOrOther = classes.filter((c) => c.status !== "live");
     return { liveNow, upcomingOrOther };
   }, [classes]);
+
+  // Deep link support: /live-classes?classId=...
+  useEffect(() => {
+    if (didAutoSelectRef.current) return;
+    const classId = searchParams.get("classId");
+    if (!classId) return;
+    const found = classes.find((c) => c.id === classId);
+    if (!found) return;
+    setActive(found);
+    didAutoSelectRef.current = true;
+    // Clean up URL so refresh doesn't force re-selection.
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete("classId");
+      return next;
+    }, { replace: true });
+  }, [classes, searchParams, setSearchParams]);
 
   const submitCreate = async () => {
     if (!user) return;
