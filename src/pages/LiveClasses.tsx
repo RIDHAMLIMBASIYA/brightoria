@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ExternalLink, Plus, Video, X } from "lucide-react";
+import { Plus, Video, X } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,20 +15,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 
-type LiveClassStatus = "scheduled" | "live" | "ended";
-
-type LiveClassRow = {
-  id: string;
-  created_at: string;
-  updated_at: string;
-  created_by: string;
-  title: string;
-  description: string | null;
-  meeting_url: string;
-  status: LiveClassStatus;
-  starts_at: string | null;
-  ends_at: string | null;
-};
+import LiveClassModerationActions from "@/components/live-classes/LiveClassModerationActions";
+import type { LiveClassRow, LiveClassStatus } from "@/components/live-classes/types";
 
 const createLiveClassSchema = z.object({
   title: z.string().trim().min(1, "Title is required").max(140, "Max 140 characters"),
@@ -261,15 +249,11 @@ export default function LiveClasses() {
                 </div>
                 {active ? (
                   <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-2"
-                      onClick={() => window.open(active.meeting_url, "_blank", "noreferrer")}
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                      Open in new tab
-                    </Button>
+                    <LiveClassModerationActions
+                      liveClass={active}
+                      onUpdated={(patch) => setActive((prev) => (prev ? ({ ...prev, ...patch } as LiveClassRow) : prev))}
+                      onDeleted={() => setActive(null)}
+                    />
                     <Button variant="ghost" size="icon" onClick={() => setActive(null)} aria-label="Close viewer">
                       <X className="w-4 h-4" />
                     </Button>
