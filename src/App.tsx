@@ -28,6 +28,7 @@ import TeacherSubmissions from "./pages/TeacherSubmissions";
 import AdminUsers from "./pages/AdminUsers";
 import AdminAnalytics from "./pages/AdminAnalytics";
 import Settings from "./pages/Settings";
+import LiveClasses from "./pages/LiveClasses";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -50,6 +51,14 @@ const App = () => (
               {/* Protected Routes */}
               <Route element={<DashboardLayout />}>
                 <Route path="/dashboard" element={<Dashboard />} />
+                <Route
+                  path="/live-classes"
+                  element={
+                    <ProtectedRoute allowedRoles={["student", "teacher", "admin"]}>
+                      <LiveClasses />
+                    </ProtectedRoute>
+                  }
+                />
                 <Route path="/courses" element={<Courses />} />
                 <Route path="/courses/:courseId" element={<CourseDetails />} />
                 <Route
