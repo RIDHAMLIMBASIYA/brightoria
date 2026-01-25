@@ -6,6 +6,7 @@ import {
   BookOpen,
   FileText,
   ClipboardList,
+  Video,
   Brain,
   UserRound,
   Users,
@@ -29,6 +30,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['student', 'teacher', 'admin'] },
+  { label: 'Live Classes', href: '/live-classes', icon: Video, roles: ['student', 'teacher', 'admin'] },
   { label: 'My Courses', href: '/courses', icon: BookOpen, roles: ['student', 'teacher'] },
   { label: 'All Teachers', href: '/teachers', icon: UserRound, roles: ['student'] },
   { label: 'Assignments', href: '/assignments', icon: FileText, roles: ['student'] },
