@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, Loader2 } from "lucide-react";
+import { Download, ExternalLink, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -137,16 +137,63 @@ export function ResourcePreviewDialog({ open, onOpenChange, title, urlOrPath, ty
     window.open(resolvedUrl, "_blank", "noreferrer");
   };
 
+  const downloadFile = async () => {
+    const url = (resolvedUrl ?? "").trim();
+    if (!url) return;
+
+    const ext =
+      type === "pdf" ? "pdf" : type === "image" ? "png" : type === "video" ? "mp4" : "file";
+    const safeBase = (title || "resource").replace(/[^a-z0-9\-_. ]/gi, "").trim() || "resource";
+    const filename = safeBase.toLowerCase().endsWith(`.${ext}`) ? safeBase : `${safeBase}.${ext}`;
+
+    try {
+      const res = await fetch(url, { credentials: "omit" });
+      if (!res.ok) throw new Error(`Download failed (${res.status})`);
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      // Let the click resolve before revoking.
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 250);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to download file");
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-4xl">
         <DialogHeader>
           <div className="flex items-start justify-between gap-3">
             <DialogTitle className="pr-2">{title}</DialogTitle>
-            <Button variant="outline" size="sm" className="gap-2" onClick={openInNewTab} disabled={!resolvedUrl}>
-              <ExternalLink className="w-4 h-4" />
-              Open
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={downloadFile}
+                disabled={!resolvedUrl || isResolving}
+              >
+                <Download className="w-4 h-4" />
+                Download
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={openInNewTab}
+                disabled={!resolvedUrl}
+              >
+                <ExternalLink className="w-4 h-4" />
+                Open
+              </Button>
+            </div>
           </div>
         </DialogHeader>
 
