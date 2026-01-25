@@ -293,6 +293,16 @@ export default function LiveClasses() {
             <CardContent>
               {active ? (
                 <div className="space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-xs text-muted-foreground">
+                      If the embed is blocked (e.g., Google Meet), open the session in a new tab.
+                    </p>
+                    <Button asChild variant="secondary" className="gap-2">
+                      <a href={active.meeting_url} target="_blank" rel="noreferrer noopener">
+                        Open in new tab
+                      </a>
+                    </Button>
+                  </div>
                   <div className="rounded-lg border border-border overflow-hidden bg-muted/20">
                     <iframe
                       title={active.title}
@@ -304,9 +314,6 @@ export default function LiveClasses() {
                       referrerPolicy="no-referrer"
                     />
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    If the embed shows “blocked”, your meeting provider doesn’t allow embedding. Use “Open in new tab”.
-                  </p>
                 </div>
               ) : (
                 <div className="h-[60vh] flex items-center justify-center rounded-lg border border-dashed border-border">
