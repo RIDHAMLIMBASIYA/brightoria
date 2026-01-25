@@ -4,21 +4,73 @@ import { Badge } from '@/components/ui/badge';
 import { Clock, HelpCircle, Trophy, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+
+type DbQuiz = {
+  id: string;
+  title: string;
+  duration: number;
+  totalMarks: number;
+  questionsCount: number;
+  course: { id: string; title: string; category: string } | null;
+};
+
+type QuizCardItem = {
+  id: string;
+  title: string;
+  duration: number;
+  totalMarks: number;
+  questionsCount: number;
+  courseId: string;
+  course?: { title: string; category: string };
+  source: 'db' | 'mock';
+};
 
 export default function Quizzes() {
-  const [isLoading, setIsLoading] = useState(true);
+  const {
+    data: dbData,
+    isLoading,
+    isError,
+  } = useQuery({
+    queryKey: ['quizzes', 'db'],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke('quizzes-list');
+      if (error) throw error;
+      return (data ?? {}) as { quizzes?: DbQuiz[] };
+    },
+  });
 
-  useEffect(() => {
-    // Placeholder for future backend loading; gives a consistent skeleton UX.
-    const t = setTimeout(() => setIsLoading(false), 250);
-    return () => clearTimeout(t);
-  }, []);
+  const quizzesWithCourse = useMemo<QuizCardItem[]>(() => {
+    const mock = mockQuizzes.map((quiz) => ({
+      id: quiz.id,
+      title: quiz.title,
+      duration: quiz.duration,
+      totalMarks: quiz.totalMarks,
+      questionsCount: quiz.questionsCount,
+      courseId: quiz.courseId,
+      course: (() => {
+        const c = mockCourses.find((x) => x.id === quiz.courseId);
+        return c ? { title: c.title, category: c.category } : undefined;
+      })(),
+      source: 'mock' as const,
+    }));
 
-  const quizzesWithCourse = mockQuizzes.map(quiz => ({
-    ...quiz,
-    course: mockCourses.find(c => c.id === quiz.courseId),
-  }));
+    const db = (dbData?.quizzes ?? []).map((q) => ({
+      id: q.id,
+      title: q.title,
+      duration: q.duration,
+      totalMarks: q.totalMarks,
+      questionsCount: q.questionsCount,
+      courseId: q.course?.id ?? q.id,
+      course: q.course ? { title: q.course.title, category: q.course.category } : undefined,
+      source: 'db' as const,
+    }));
+
+    // Merge (DB first), then hide quizzes with 0 questions (per requested behavior)
+    return [...db, ...mock].filter((q) => (q.questionsCount ?? 0) > 0);
+  }, [dbData]);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -48,13 +100,21 @@ export default function Quizzes() {
             </div>
           ))}
         </div>
+      ) : isError ? (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
+            <HelpCircle className="w-8 h-8 text-muted-foreground" />
+          </div>
+          <h3 className="font-display font-semibold text-lg mb-2">Couldn’t load quizzes</h3>
+          <p className="text-muted-foreground max-w-sm">Please try again in a moment.</p>
+        </div>
       ) : quizzesWithCourse.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
             <HelpCircle className="w-8 h-8 text-muted-foreground" />
           </div>
           <h3 className="font-display font-semibold text-lg mb-2">No quizzes yet</h3>
-          <p className="text-muted-foreground max-w-sm">When quizzes are published, you’ll see them here.</p>
+          <p className="text-muted-foreground max-w-sm">When quizzes have questions added, you’ll see them here.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
