@@ -11,6 +11,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
@@ -18,18 +25,35 @@ import { Badge } from "@/components/ui/badge";
 import LiveClassModerationActions from "@/components/live-classes/LiveClassModerationActions";
 import type { LiveClassRow } from "@/components/live-classes/types";
 import LiveClassListItem from "@/components/live-classes/LiveClassListItem";
+import LiveRoom from "@/components/live-classes/LiveRoom";
 
-const createLiveClassSchema = z.object({
+const createLiveClassCommonSchema = z.object({
   title: z.string().trim().min(1, "Title is required").max(140, "Max 140 characters"),
   description: z.string().trim().max(2000, "Too long").optional().or(z.literal("")),
-  meetingUrl: z
-    .string()
-    .trim()
-    .min(10, "Meeting URL is required")
-    .max(2000, "URL too long")
-    .url("Enter a valid URL")
-    .refine((v) => v.startsWith("http://") || v.startsWith("https://"), "URL must start with http(s)"),
 });
+
+const meetingUrlSchema = z
+  .string()
+  .trim()
+  .min(10, "Meeting URL is required")
+  .max(2000, "URL too long")
+  .url("Enter a valid URL")
+  .refine((v) => v.startsWith("http://") || v.startsWith("https://"), "URL must start with http(s)");
+
+const createLiveClassSchema = z
+  .discriminatedUnion("provider", [
+    createLiveClassCommonSchema.extend({
+      provider: z.literal("brightoria_webrtc"),
+    }),
+    createLiveClassCommonSchema.extend({
+      provider: z.literal("external"),
+      meetingUrl: meetingUrlSchema,
+    }),
+  ])
+  .transform((v) => ({
+    ...v,
+    description: v.description?.trim() ? v.description.trim() : null,
+  }));
 
 type PublicProfile = {
   user_id: string;
@@ -51,6 +75,7 @@ export default function LiveClasses() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [meetingUrl, setMeetingUrl] = useState("");
+  const [provider, setProvider] = useState<"brightoria_webrtc" | "external">("brightoria_webrtc");
   const [isCreating, setIsCreating] = useState(false);
 
   const { data: classes = [], isLoading, error } = useQuery({
@@ -145,7 +170,7 @@ export default function LiveClasses() {
       return;
     }
 
-    const parsed = createLiveClassSchema.safeParse({ title, description, meetingUrl });
+    const parsed = createLiveClassSchema.safeParse({ title, description, meetingUrl, provider });
     if (!parsed.success) {
       toast.error(parsed.error.issues[0]?.message ?? "Invalid form");
       return;
@@ -153,13 +178,17 @@ export default function LiveClasses() {
 
     setIsCreating(true);
     try {
+      const roomId = parsed.data.provider === "brightoria_webrtc" ? crypto.randomUUID() : null;
+
       const { data, error } = await supabase
         .from("live_classes")
         .insert({
           created_by: user.id,
           title: parsed.data.title,
-          description: parsed.data.description?.trim() ? parsed.data.description.trim() : null,
-          meeting_url: parsed.data.meetingUrl,
+          description: parsed.data.description,
+          provider: parsed.data.provider,
+          room_id: roomId,
+          meeting_url: parsed.data.provider === "external" ? parsed.data.meetingUrl : null,
           status: "live",
         })
         .select("*")
@@ -173,6 +202,7 @@ export default function LiveClasses() {
       setTitle("");
       setDescription("");
       setMeetingUrl("");
+      setProvider("brightoria_webrtc");
       setActive(data as LiveClassRow);
       qc.invalidateQueries({ queryKey: ["live-classes"] });
     } catch (e: any) {
@@ -293,27 +323,42 @@ export default function LiveClasses() {
             <CardContent>
               {active ? (
                 <div className="space-y-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-xs text-muted-foreground">
-                      If the embed is blocked (e.g., Google Meet), open the session in a new tab.
-                    </p>
-                    <Button asChild variant="secondary" className="gap-2">
-                      <a href={active.meeting_url} target="_blank" rel="noreferrer noopener">
-                        Open in new tab
-                      </a>
-                    </Button>
-                  </div>
-                  <div className="rounded-lg border border-border overflow-hidden bg-muted/20">
-                    <iframe
-                      title={active.title}
-                      src={active.meeting_url}
-                      className="w-full h-[60vh]"
-                      // Some providers will still block via X-Frame-Options/CSP.
-                      // We keep a safe sandbox and provide a fallback button.
-                      sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
-                      referrerPolicy="no-referrer"
-                    />
-                  </div>
+                  {active.provider === "brightoria_webrtc" ? (
+                    active.room_id ? (
+                      <LiveRoom liveClass={active} />
+                    ) : (
+                      <div className="h-[60vh] flex items-center justify-center rounded-lg border border-dashed border-border">
+                        <p className="text-sm text-muted-foreground">This room is not configured yet.</p>
+                      </div>
+                    )
+                  ) : (
+                    <>
+                      {active.meeting_url ? (
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className="text-xs text-muted-foreground">
+                            If the embed is blocked (e.g., Google Meet), open the session in a new tab.
+                          </p>
+                          <Button asChild variant="secondary" className="gap-2">
+                            <a href={active.meeting_url} target="_blank" rel="noreferrer noopener">
+                              Open in new tab
+                            </a>
+                          </Button>
+                        </div>
+                      ) : null}
+
+                      <div className="rounded-lg border border-border overflow-hidden bg-muted/20">
+                        <iframe
+                          title={active.title}
+                          src={active.meeting_url ?? "about:blank"}
+                          className="w-full h-[60vh]"
+                          // Some providers will still block via X-Frame-Options/CSP.
+                          // We keep a safe sandbox and provide a fallback button.
+                          sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className="h-[60vh] flex items-center justify-center rounded-lg border border-dashed border-border">
@@ -343,14 +388,43 @@ export default function LiveClasses() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="lc-url">Meeting URL</Label>
-              <Input
-                id="lc-url"
-                value={meetingUrl}
-                onChange={(e) => setMeetingUrl(e.target.value)}
-                placeholder="https://..."
-              />
-              <p className="text-xs text-muted-foreground">Tip: Some providers block embedding; students can always use “Open in new tab”.</p>
+              <Label>Session type</Label>
+              <Select value={provider} onValueChange={(v) => setProvider(v as any)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="brightoria_webrtc">Brightoria Live Room (in-app)</SelectItem>
+                  <SelectItem value="external">External meeting link</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Brightoria Live Room runs inside the website (best for 2–6 participants).
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              {provider === "external" ? (
+                <>
+                  <Label htmlFor="lc-url">Meeting URL</Label>
+                  <Input
+                    id="lc-url"
+                    value={meetingUrl}
+                    onChange={(e) => setMeetingUrl(e.target.value)}
+                    placeholder="https://..."
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Tip: Some providers block embedding; students can always use “Open in new tab”.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <Label>Meeting URL</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Not needed for Brightoria Live Room.
+                  </p>
+                </>
+              )}
             </div>
 
             <div className="space-y-2">

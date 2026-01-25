@@ -209,7 +209,9 @@ export type Database = {
           description: string | null
           ends_at: string | null
           id: string
-          meeting_url: string
+          meeting_url: string | null
+          provider: Database["public"]["Enums"]["live_class_provider"]
+          room_id: string | null
           starts_at: string | null
           status: Database["public"]["Enums"]["live_class_status"]
           title: string
@@ -221,7 +223,9 @@ export type Database = {
           description?: string | null
           ends_at?: string | null
           id?: string
-          meeting_url: string
+          meeting_url?: string | null
+          provider?: Database["public"]["Enums"]["live_class_provider"]
+          room_id?: string | null
           starts_at?: string | null
           status?: Database["public"]["Enums"]["live_class_status"]
           title: string
@@ -233,7 +237,9 @@ export type Database = {
           description?: string | null
           ends_at?: string | null
           id?: string
-          meeting_url?: string
+          meeting_url?: string | null
+          provider?: Database["public"]["Enums"]["live_class_provider"]
+          room_id?: string | null
           starts_at?: string | null
           status?: Database["public"]["Enums"]["live_class_status"]
           title?: string
@@ -524,6 +530,7 @@ export type Database = {
     }
     Enums: {
       app_role: "student" | "teacher" | "admin"
+      live_class_provider: "external" | "brightoria_webrtc"
       live_class_status: "scheduled" | "live" | "ended"
     }
     CompositeTypes: {
@@ -653,6 +660,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["student", "teacher", "admin"],
+      live_class_provider: ["external", "brightoria_webrtc"],
       live_class_status: ["scheduled", "live", "ended"],
     },
   },
