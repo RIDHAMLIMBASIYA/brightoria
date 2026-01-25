@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ExternalLink, Loader2 } from "lucide-react";
@@ -20,7 +20,9 @@ const isHttpUrl = (v: string) => /^https?:\/\//i.test(v.trim());
 
 export function ResourcePreviewDialog({ open, onOpenChange, title, urlOrPath, type }: ResourcePreviewDialogProps) {
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
+  const [displayUrl, setDisplayUrl] = useState<string | null>(null);
   const [isResolving, setIsResolving] = useState(false);
+  const objectUrlRef = useRef<string | null>(null);
 
   const needsSignedUrl = useMemo(() => {
     // If it's not an http(s) url, treat it as an uploads bucket path.
@@ -76,6 +78,60 @@ export function ResourcePreviewDialog({ open, onOpenChange, title, urlOrPath, ty
     };
   }, [open, urlOrPath, needsSignedUrl]);
 
+  // Some browsers (notably Chrome) may block embedding certain signed storage URLs in iframes.
+  // To avoid that, fetch the file and preview via a local blob: URL for media types.
+  useEffect(() => {
+    if (!open) return;
+
+    // Cleanup any previous blob URL
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current);
+      objectUrlRef.current = null;
+    }
+
+    setDisplayUrl(null);
+
+    const url = (resolvedUrl ?? "").trim();
+    if (!url) return;
+
+    const shouldUseBlob = type === "pdf" || type === "image" || type === "video";
+    if (!shouldUseBlob) {
+      setDisplayUrl(url);
+      return;
+    }
+
+    const controller = new AbortController();
+    const run = async () => {
+      setIsResolving(true);
+      try {
+        const res = await fetch(url, { signal: controller.signal, credentials: "omit" });
+        if (!res.ok) throw new Error(`Failed to load file (${res.status})`);
+        const blob = await res.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        objectUrlRef.current = objectUrl;
+        setDisplayUrl(objectUrl);
+      } catch (e: any) {
+        if (e?.name === "AbortError") return;
+        toast.error(e?.message ?? "Failed to load preview");
+        // Fallback to direct URL (lets user use the Open button even if embed fails)
+        setDisplayUrl(url);
+      } finally {
+        setIsResolving(false);
+      }
+    };
+
+    run();
+    return () => {
+      controller.abort();
+    };
+  }, [open, resolvedUrl, type]);
+
+  useEffect(() => {
+    return () => {
+      if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+    };
+  }, []);
+
   const openInNewTab = () => {
     if (!resolvedUrl) return;
     window.open(resolvedUrl, "_blank", "noreferrer");
@@ -99,20 +155,20 @@ export function ResourcePreviewDialog({ open, onOpenChange, title, urlOrPath, ty
             <div className="flex items-center justify-center h-[60vh]">
               <Loader2 className="w-6 h-6 animate-spin text-primary" />
             </div>
-          ) : !resolvedUrl ? (
+          ) : !displayUrl ? (
             <div className="flex items-center justify-center h-[60vh]">
               <p className="text-muted-foreground">No preview available.</p>
             </div>
           ) : type === "image" ? (
             <div className="flex items-center justify-center bg-muted/30">
-              <img src={resolvedUrl} alt={title} className="max-h-[70vh] w-auto object-contain" />
+              <img src={displayUrl} alt={title} className="max-h-[70vh] w-auto object-contain" />
             </div>
           ) : type === "video" ? (
-            <video src={resolvedUrl} controls className="w-full max-h-[70vh] bg-black" />
+            <video src={displayUrl} controls className="w-full max-h-[70vh] bg-black" />
           ) : type === "pdf" ? (
-            <iframe title={title} src={resolvedUrl} className="w-full h-[70vh]" />
+            <iframe title={title} src={displayUrl} className="w-full h-[70vh]" />
           ) : (
-            <iframe title={title} src={resolvedUrl} className="w-full h-[70vh]" />
+            <iframe title={title} src={displayUrl} className="w-full h-[70vh]" />
           )}
         </div>
       </DialogContent>
