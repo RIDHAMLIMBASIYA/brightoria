@@ -4,6 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { LiveClassRow, LiveClassStatus } from "@/components/live-classes/types";
 
+type CreatorRole = "teacher" | "admin";
+
 type PublicProfile = {
   user_id: string;
   name: string | null;
@@ -24,10 +26,12 @@ function statusBadgeVariant(status: LiveClassStatus): "default" | "secondary" | 
 export default function LiveClassListItem({
   liveClass,
   creator,
+  creatorRole,
   onSelect,
 }: {
   liveClass: LiveClassRow;
   creator?: PublicProfile;
+  creatorRole?: CreatorRole;
   onSelect: () => void;
 }) {
   const creatorName = useMemo(() => {
@@ -54,6 +58,15 @@ export default function LiveClassListItem({
               <AvatarFallback className="text-[10px]">{initials(creatorName)}</AvatarFallback>
             </Avatar>
             <p className="text-xs text-muted-foreground truncate">{creatorName}</p>
+
+            {creatorRole ? (
+              <Badge
+                variant={creatorRole === "admin" ? "default" : "secondary"}
+                className="h-5 px-2 text-[10px] capitalize"
+              >
+                {creatorRole}
+              </Badge>
+            ) : null}
           </div>
 
           {liveClass.description ? (
