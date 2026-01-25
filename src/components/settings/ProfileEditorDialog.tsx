@@ -22,12 +22,42 @@ interface ProfileEditorDialogProps {
 
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024; // 5MB
 
+const STUDY_AVATAR_SEEDS = [
+  "Scholar",
+  "Bookworm",
+  "StudyBuddy",
+  "Notebook",
+  "Pencil",
+  "Library",
+  "Backpack",
+  "ExamReady",
+  "Topper",
+  "Classroom",
+  "Whiteboard",
+  "Calculator",
+  "Microscope",
+  "ScienceClub",
+  "Coding",
+  "Laptop",
+  "AIResearch",
+  "MathGenius",
+  "HistoryBuff",
+  "LanguageLearner",
+];
+
 function buildPresetAvatarUrls(seedBase: string, count: number) {
   // Dicebear is already used as a fallback in the app, so we reuse it for consistent styling.
   // Using a fixed preset list gives users a predictable “pick one” gallery.
   return Array.from({ length: count }, (_, i) => {
     const seed = encodeURIComponent(`${seedBase}-${i + 1}`);
     return `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed}`;
+  });
+}
+
+function buildPresetAvatarUrlsFromSeeds(seeds: string[]) {
+  return seeds.map((seed) => {
+    const safe = encodeURIComponent(seed);
+    return `https://api.dicebear.com/7.x/avataaars/svg?seed=${safe}`;
   });
 }
 
@@ -51,7 +81,11 @@ export function ProfileEditorDialog({ user, onProfileUpdated, triggerLabel = "Ed
     setEmail(user.email);
   }, [open, user.name, user.email]);
 
-  const presetAvatars = useMemo(() => buildPresetAvatarUrls(user.name || user.id, 15), [user.id, user.name]);
+  const presetAvatars = useMemo(() => {
+    const base = buildPresetAvatarUrls(user.name || user.id, 20);
+    const study = buildPresetAvatarUrlsFromSeeds(STUDY_AVATAR_SEEDS.map((s) => `${user.name || user.id}-${s}`));
+    return [...base, ...study];
+  }, [user.id, user.name]);
   const currentAvatar = user.avatar || avatarSrc;
 
   const pickAvatar = () => fileRef.current?.click();
