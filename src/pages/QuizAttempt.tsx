@@ -7,6 +7,7 @@ import { Clock, CheckCircle, XCircle, ArrowRight, ArrowLeft, Trophy } from 'luci
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { mockQuizzes, mockQuizQuestions } from '@/data/mockData';
 
 type QuizDto = {
   id: string;
@@ -24,6 +25,11 @@ type QuestionDto = {
 };
 
 type ReviewMap = Record<string, { correct: boolean; correctAnswer: number }>;
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+function isUuid(value: string) {
+  return UUID_RE.test(value);
+}
 
 export default function QuizAttempt() {
   const { quizId } = useParams();
@@ -57,6 +63,35 @@ export default function QuizAttempt() {
 
       setIsLoading(true);
       try {
+        // Mock quizzes use non-UUID ids; database quizzes use UUID ids.
+        if (!isUuid(quizId)) {
+          const q = mockQuizzes.find((x) => x.id === quizId);
+          const qs = mockQuizQuestions.filter((x) => x.quizId === quizId);
+
+          if (!q || qs.length === 0) throw new Error('Quiz not found');
+
+          const mappedQuiz: QuizDto = {
+            id: q.id,
+            title: q.title,
+            duration: q.duration,
+            totalMarks: q.totalMarks,
+          };
+
+          const mappedQuestions: QuestionDto[] = qs.map((x, idx) => ({
+            id: x.id,
+            question_text: x.questionText,
+            options: x.options,
+            marks: x.marks,
+            question_order: idx + 1,
+          }));
+
+          if (!cancelled) {
+            setQuiz(mappedQuiz);
+            setQuestions(mappedQuestions);
+          }
+          return;
+        }
+
         const { data: sessionData } = await supabase.auth.getSession();
         const token = sessionData.session?.access_token;
         if (!token) {
@@ -65,22 +100,17 @@ export default function QuizAttempt() {
           return;
         }
 
-        const res = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/quiz-attempt`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({ action: 'get', quizId }),
-          }
-        );
+        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/quiz-attempt`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ action: 'get', quizId }),
+        });
 
         const payload = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          throw new Error(payload?.error || 'Failed to load quiz');
-        }
+        if (!res.ok) throw new Error(payload?.error || 'Failed to load quiz');
 
         if (!cancelled) {
           setQuiz(payload.quiz as QuizDto);
@@ -153,6 +183,31 @@ export default function QuizAttempt() {
     if (!quizId) return;
 
     try {
+      // Local submit for mock quizzes (non-UUID ids)
+      if (!isUuid(quizId)) {
+        const mockQs = mockQuizQuestions.filter((x) => x.quizId === quizId);
+        if (mockQs.length === 0) throw new Error('Quiz has no questions');
+
+        // Require answers for every question
+        for (const q of mockQs) {
+          if (answers[q.id] === undefined) throw new Error('Please answer all questions');
+        }
+
+        let localScore = 0;
+        const localReview: ReviewMap = {};
+        for (const q of mockQs) {
+          const correct = answers[q.id] === q.correctAnswer;
+          if (correct) localScore += q.marks;
+          localReview[q.id] = { correct, correctAnswer: q.correctAnswer };
+        }
+
+        setScore(localScore);
+        setReview(localReview);
+        setIsSubmitted(true);
+        toast.success('Quiz submitted successfully!');
+        return;
+      }
+
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
       if (!token) {
