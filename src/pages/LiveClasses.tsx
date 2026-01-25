@@ -37,6 +37,8 @@ type PublicProfile = {
   avatar_url: string | null;
 };
 
+type CreatorRole = "teacher" | "admin";
+
 export default function LiveClasses() {
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -82,6 +84,30 @@ export default function LiveClasses() {
 
       const rows = (data ?? []) as PublicProfile[];
       return new Map(rows.map((p) => [p.user_id, p] as const));
+    },
+  });
+
+  const { data: creatorRolesById = new Map<string, CreatorRole>() } = useQuery({
+    queryKey: ["live-class-creator-roles", creatorIds.join(",")],
+    enabled: creatorIds.length > 0,
+    queryFn: async () => {
+      // Policy allows reading only teacher/admin roles for authenticated users.
+      const { data, error } = await supabase
+        .from("user_roles")
+        .select("user_id,role")
+        .in("user_id", creatorIds)
+        .in("role", ["teacher", "admin"]);
+
+      if (error) throw error;
+
+      const rows = (data ?? []) as { user_id: string; role: CreatorRole }[];
+      const map = new Map<string, CreatorRole>();
+      for (const r of rows) {
+        // If a user has multiple roles, prefer admin.
+        const prev = map.get(r.user_id);
+        if (!prev || (prev === "teacher" && r.role === "admin")) map.set(r.user_id, r.role);
+      }
+      return map;
     },
   });
 
@@ -198,6 +224,7 @@ export default function LiveClasses() {
                     key={c.id}
                     liveClass={c}
                     creator={creatorsById.get(c.created_by)}
+                    creatorRole={creatorRolesById.get(c.created_by)}
                     onSelect={() => setActive(c)}
                   />
                 ))
@@ -223,6 +250,7 @@ export default function LiveClasses() {
                     <LiveClassListItem
                       liveClass={c}
                       creator={creatorsById.get(c.created_by)}
+                      creatorRole={creatorRolesById.get(c.created_by)}
                       onSelect={() => setActive(c)}
                     />
                     <p className="px-1 text-xs text-muted-foreground">
