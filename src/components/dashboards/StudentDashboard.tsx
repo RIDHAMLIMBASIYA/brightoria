@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
 import type { LiveClassRow } from '@/components/live-classes/types';
+import brightoriaLogo from '@/assets/brightoria-logo.png';
 import { useQuery } from '@tanstack/react-query';
 import { BookOpen, ClipboardList, Brain, Trophy, Calendar, ArrowRight, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -20,6 +21,8 @@ type PublicProfile = {
 };
 
 type CreatorRole = 'teacher' | 'admin';
+
+type ApprovalRow = { user_id: string; approved: boolean };
 
 function initials(name: string) {
   const parts = name.trim().split(/\s+/).slice(0, 2);
@@ -86,6 +89,39 @@ export function StudentDashboard() {
       return map;
     },
   });
+
+  const { data: approvedById = new Map<string, boolean>() } = useQuery({
+    queryKey: ['student-live-class-creator-approvals', creatorIds.join(',')],
+    enabled: creatorIds.length > 0,
+    queryFn: async () => {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      const token = sessionData?.session?.access_token;
+      if (!token) throw new Error('Not authenticated');
+
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/teacher-approval-status`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userIds: creatorIds }),
+      });
+
+      const json = (await res.json().catch(() => null)) as
+        | { approvals?: ApprovalRow[]; error?: string }
+        | null;
+      if (!res.ok) throw new Error(json?.error || `Request failed (${res.status})`);
+
+      const rows = (json?.approvals ?? []) as ApprovalRow[];
+      return new Map(rows.map((r) => [r.user_id, Boolean(r.approved)] as const));
+    },
+  });
+
+  const isVerifiedHost = (userId: string, role?: CreatorRole) => {
+    if (role === 'admin') return true;
+    return approvedById.get(userId) === true;
+  };
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -195,6 +231,7 @@ export function StudentDashboard() {
                             const creator = creatorsById.get(lc.created_by);
                             const role = creatorRolesById.get(lc.created_by);
                             const name = (creator?.name ?? '').trim() || 'Unknown';
+                            const verified = isVerifiedHost(lc.created_by, role);
                             return (
                               <>
                                 <Avatar className="h-6 w-6">
@@ -205,6 +242,14 @@ export function StudentDashboard() {
                                   <AvatarFallback className="text-[10px]">{initials(name)}</AvatarFallback>
                                 </Avatar>
                                 <p className="text-xs text-muted-foreground truncate">{name}</p>
+                                {verified ? (
+                                  <img
+                                    src={brightoriaLogo}
+                                    alt="Verified"
+                                    className="h-3.5 w-3.5 shrink-0"
+                                    loading="lazy"
+                                  />
+                                ) : null}
                                 {role ? (
                                   <Badge
                                     variant={role === 'admin' ? 'default' : 'secondary'}
@@ -242,33 +287,42 @@ export function StudentDashboard() {
                         <div className="min-w-0">
                           <p className="font-medium text-sm truncate">{c.title}</p>
 
-                           <div className="mt-2 flex items-center gap-2 min-w-0">
-                             {(() => {
-                               const creator = creatorsById.get(c.created_by);
-                               const role = creatorRolesById.get(c.created_by);
-                               const name = (creator?.name ?? '').trim() || 'Unknown';
-                               return (
-                                 <>
-                                   <Avatar className="h-5 w-5">
-                                     <AvatarImage
-                                       src={creator?.avatar_url ?? undefined}
-                                       alt={creator?.name ? `${creator.name} avatar` : 'Host avatar'}
-                                     />
-                                     <AvatarFallback className="text-[9px]">{initials(name)}</AvatarFallback>
-                                   </Avatar>
-                                   <p className="text-xs text-muted-foreground truncate">Live host: {name}</p>
-                                   {role ? (
-                                     <Badge
-                                       variant={role === 'admin' ? 'default' : 'secondary'}
-                                       className="h-5 px-2 text-[10px] capitalize"
-                                     >
-                                       {role}
-                                     </Badge>
-                                   ) : null}
-                                 </>
-                               );
-                             })()}
-                           </div>
+                          <div className="mt-2 flex items-center gap-2 min-w-0">
+                            {(() => {
+                              const creator = creatorsById.get(c.created_by);
+                              const role = creatorRolesById.get(c.created_by);
+                              const name = (creator?.name ?? '').trim() || 'Unknown';
+                              const verified = isVerifiedHost(c.created_by, role);
+                              return (
+                                <>
+                                  <Avatar className="h-5 w-5">
+                                    <AvatarImage
+                                      src={creator?.avatar_url ?? undefined}
+                                      alt={creator?.name ? `${creator.name} avatar` : 'Host avatar'}
+                                    />
+                                    <AvatarFallback className="text-[9px]">{initials(name)}</AvatarFallback>
+                                  </Avatar>
+                                  <p className="text-xs text-muted-foreground truncate">Live host: {name}</p>
+                                  {verified ? (
+                                    <img
+                                      src={brightoriaLogo}
+                                      alt="Verified"
+                                      className="h-3 w-3 shrink-0"
+                                      loading="lazy"
+                                    />
+                                  ) : null}
+                                  {role ? (
+                                    <Badge
+                                      variant={role === 'admin' ? 'default' : 'secondary'}
+                                      className="h-5 px-2 text-[10px] capitalize"
+                                    >
+                                      {role}
+                                    </Badge>
+                                  ) : null}
+                                </>
+                              );
+                            })()}
+                          </div>
 
                           <p className="text-xs text-muted-foreground mt-1 truncate">
                             {c.provider === 'brightoria_webrtc' ? 'In-app room' : 'External link'}
