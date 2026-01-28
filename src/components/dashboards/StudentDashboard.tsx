@@ -241,6 +241,35 @@ export function StudentDashboard() {
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="font-medium text-sm truncate">{c.title}</p>
+
+                           <div className="mt-2 flex items-center gap-2 min-w-0">
+                             {(() => {
+                               const creator = creatorsById.get(c.created_by);
+                               const role = creatorRolesById.get(c.created_by);
+                               const name = (creator?.name ?? '').trim() || 'Unknown';
+                               return (
+                                 <>
+                                   <Avatar className="h-5 w-5">
+                                     <AvatarImage
+                                       src={creator?.avatar_url ?? undefined}
+                                       alt={creator?.name ? `${creator.name} avatar` : 'Host avatar'}
+                                     />
+                                     <AvatarFallback className="text-[9px]">{initials(name)}</AvatarFallback>
+                                   </Avatar>
+                                   <p className="text-xs text-muted-foreground truncate">Live host: {name}</p>
+                                   {role ? (
+                                     <Badge
+                                       variant={role === 'admin' ? 'default' : 'secondary'}
+                                       className="h-5 px-2 text-[10px] capitalize"
+                                     >
+                                       {role}
+                                     </Badge>
+                                   ) : null}
+                                 </>
+                               );
+                             })()}
+                           </div>
+
                           <p className="text-xs text-muted-foreground mt-1 truncate">
                             {c.provider === 'brightoria_webrtc' ? 'In-app room' : 'External link'}
                           </p>
