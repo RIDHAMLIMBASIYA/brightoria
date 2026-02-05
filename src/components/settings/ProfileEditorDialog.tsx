@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Upload } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { AvatarPicker } from "@/components/settings/AvatarPicker";
 
 type User = {
   id: string;
@@ -50,15 +51,23 @@ function buildPresetAvatarUrls(seedBase: string, count: number) {
   // Using a fixed preset list gives users a predictable “pick one” gallery.
   return Array.from({ length: count }, (_, i) => {
     const seed = encodeURIComponent(`${seedBase}-${i + 1}`);
-    return `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed}`;
+    return `https://api.dicebear.com/7.x/adventurer/svg?seed=${seed}`;
   });
 }
 
 function buildPresetAvatarUrlsFromSeeds(seeds: string[]) {
   return seeds.map((seed) => {
     const safe = encodeURIComponent(seed);
-    return `https://api.dicebear.com/7.x/avataaars/svg?seed=${safe}`;
+    return `https://api.dicebear.com/7.x/adventurer/svg?seed=${safe}`;
   });
+}
+
+function shuffleInPlace<T>(arr: T[]) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
 }
 
 export function ProfileEditorDialog({ user, onProfileUpdated, triggerLabel = "Edit" }: ProfileEditorDialogProps) {
@@ -69,9 +78,10 @@ export function ProfileEditorDialog({ user, onProfileUpdated, triggerLabel = "Ed
   const [isUploading, setIsUploading] = useState(false);
   const [isSettingPresetAvatar, setIsSettingPresetAvatar] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
+  const [presetAvatars, setPresetAvatars] = useState<string[]>([]);
 
   const avatarSrc = useMemo(
-    () => user.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name}`,
+    () => user.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${user.name}`,
     [user.avatar, user.name]
   );
 
@@ -81,14 +91,27 @@ export function ProfileEditorDialog({ user, onProfileUpdated, triggerLabel = "Ed
     setEmail(user.email);
   }, [open, user.name, user.email]);
 
-  const presetAvatars = useMemo(() => {
-    const base = buildPresetAvatarUrls(user.name || user.id, 20);
-    const study = buildPresetAvatarUrlsFromSeeds(STUDY_AVATAR_SEEDS.map((s) => `${user.name || user.id}-${s}`));
+  const initialPresetAvatars = useMemo(() => {
+    // 60 total presets (stable) + user can Shuffle.
+    const base = buildPresetAvatarUrls(user.name || user.id, 30);
+    const study = buildPresetAvatarUrlsFromSeeds(
+      STUDY_AVATAR_SEEDS.slice(0, 30).map((s) => `${user.name || user.id}-${s}`)
+    );
     return [...base, ...study];
   }, [user.id, user.name]);
+
+  useEffect(() => {
+    if (!open) return;
+    setPresetAvatars(initialPresetAvatars);
+  }, [open, initialPresetAvatars]);
+
   const currentAvatar = user.avatar || avatarSrc;
 
   const pickAvatar = () => fileRef.current?.click();
+
+  const shufflePresets = () => {
+    setPresetAvatars((prev) => shuffleInPlace([...prev]));
+  };
 
   const setAvatarUrl = async (url: string) => {
     setIsSettingPresetAvatar(true);
@@ -235,53 +258,18 @@ export function ProfileEditorDialog({ user, onProfileUpdated, triggerLabel = "Ed
                 className="w-24 h-24 rounded-xl ring-2 ring-border object-cover"
               />
 
-              <div className="flex-1 space-y-2">
-                <p className="text-sm font-medium">Avatar</p>
-                <p className="text-xs text-muted-foreground">Choose a preset or upload your own.</p>
-
-                <p className="text-xs font-medium text-muted-foreground">Choose an avatar</p>
-                <div className="grid grid-cols-4 sm:grid-cols-6 gap-3 max-h-64 overflow-y-auto pr-1">
-                  {presetAvatars.map((url) => {
-                    const selected = currentAvatar === url;
-                    return (
-                      <button
-                        key={url}
-                        type="button"
-                        onClick={() => setAvatarUrl(url)}
-                        disabled={isUploading || isSettingPresetAvatar}
-                        className={
-                          "relative h-16 w-16 overflow-hidden rounded-xl ring-1 ring-border transition focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60" +
-                          (selected ? " ring-2 ring-primary" : " hover:ring-2 hover:ring-ring")
-                        }
-                        aria-label={selected ? "Selected avatar" : "Select avatar"}
-                      >
-                        <img src={url} alt="Preset avatar" className="h-full w-full object-cover" loading="lazy" />
-                        {selected ? <span className="sr-only">Selected</span> : null}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={onFileChange}
-                />
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  className="w-full sm:w-auto gap-2"
-                  onClick={pickAvatar}
-                  disabled={isUploading || isSettingPresetAvatar}
-                >
-                  {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                  Upload avatar
-                </Button>
-              </div>
+              <AvatarPicker
+                presetAvatars={presetAvatars}
+                currentAvatar={currentAvatar}
+                isUploading={isUploading}
+                isSettingPresetAvatar={isSettingPresetAvatar}
+                onSelectAvatar={setAvatarUrl}
+                onUploadClick={pickAvatar}
+                onShuffle={shufflePresets}
+              />
             </div>
+
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onFileChange} />
           </div>
         </div>
 
