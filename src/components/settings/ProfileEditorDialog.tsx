@@ -218,7 +218,7 @@ export function ProfileEditorDialog({ user, onProfileUpdated, triggerLabel = "Ed
 
             <div className="space-y-2">
               <p className="text-xs font-medium text-muted-foreground">Choose an avatar</p>
-              <div className="grid grid-cols-5 gap-2">
+              <div className="grid grid-cols-4 gap-3 max-h-64 overflow-y-auto pr-1">
                 {presetAvatars.map((url) => {
                   const selected = currentAvatar === url;
                   return (
@@ -228,7 +228,7 @@ export function ProfileEditorDialog({ user, onProfileUpdated, triggerLabel = "Ed
                       onClick={() => setAvatarUrl(url)}
                       disabled={isUploading || isSettingPresetAvatar}
                       className={
-                        "relative aspect-square overflow-hidden rounded-lg ring-1 ring-border transition focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60" +
+                        "relative h-14 w-14 overflow-hidden rounded-xl ring-1 ring-border transition focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60" +
                         (selected ? " ring-2 ring-primary" : " hover:ring-2 hover:ring-ring")
                       }
                       aria-label={selected ? "Selected avatar" : "Select avatar"}
