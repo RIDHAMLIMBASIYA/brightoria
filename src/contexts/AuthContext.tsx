@@ -173,15 +173,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(session);
         
         if (session?.user) {
-          // Defer profile fetch to avoid deadlock
+          // Keep loading=true until the user profile is hydrated.
+          // Defer Supabase calls to avoid auth callback deadlocks.
+          setIsLoading(true);
           setTimeout(() => {
-            fetchUserProfile(session.user.id, session.user.email || '', session.user.user_metadata);
+            fetchUserProfile(session.user.id, session.user.email || '', session.user.user_metadata)
+              .catch((err) => console.error('Error hydrating user profile:', err))
+              .finally(() => setIsLoading(false));
           }, 0);
         } else {
           setUser(null);
+          setTeacherApprovalStatus('unknown');
+          setIsLoading(false);
         }
-        
-        setIsLoading(false);
       }
     );
 
@@ -190,10 +194,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session);
       
       if (session?.user) {
-        fetchUserProfile(session.user.id, session.user.email || '', session.user.user_metadata);
+        setIsLoading(true);
+        fetchUserProfile(session.user.id, session.user.email || '', session.user.user_metadata)
+          .catch((err) => console.error('Error hydrating user profile:', err))
+          .finally(() => setIsLoading(false));
+      } else {
+        setIsLoading(false);
       }
-      
-      setIsLoading(false);
     });
 
     return () => subscription.unsubscribe();
