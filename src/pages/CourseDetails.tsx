@@ -12,6 +12,8 @@ import {
   Clock,
   Play,
   Download,
+  ExternalLink,
+  Loader2,
   MessageCircle,
   ArrowLeft
 } from 'lucide-react';
@@ -20,6 +22,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ResourcePreviewDialog } from '@/components/courses/ResourcePreviewDialog';
+
+const isHttpUrl = (v: string) => /^https?:\/\//i.test(v.trim());
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 function isUuid(value: string | undefined) {
@@ -163,11 +167,76 @@ export default function CourseDetails() {
   const [previewType, setPreviewType] = useState<'pdf' | 'image' | 'video' | 'link'>('link');
   const [previewUrlOrPath, setPreviewUrlOrPath] = useState<string>('');
 
+  const [busyDownloadNoteId, setBusyDownloadNoteId] = useState<string | null>(null);
+  const [expandedNoteIds, setExpandedNoteIds] = useState<Set<string>>(() => new Set());
+
   const openPreview = (opts: { title: string; type: 'pdf' | 'image' | 'video' | 'link'; urlOrPath: string }) => {
     setPreviewTitle(opts.title);
     setPreviewType(opts.type);
     setPreviewUrlOrPath(opts.urlOrPath);
     setPreviewOpen(true);
+  };
+
+  const resolveResourceUrl = async (urlOrPath: string) => {
+    const raw = (urlOrPath ?? '').trim();
+    if (!raw) throw new Error('Missing file');
+    if (isHttpUrl(raw)) return raw;
+
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) throw sessionError;
+    const token = sessionData.session?.access_token;
+    if (!token) throw new Error('Not authenticated');
+
+    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-upload-signed-url`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ path: raw }),
+    });
+
+    const json = (await res.json().catch(() => null)) as { signedUrl?: string; error?: string } | null;
+    if (!res.ok) throw new Error(json?.error || `Request failed (${res.status})`);
+    if (!json?.signedUrl) throw new Error('No download URL returned');
+    return json.signedUrl;
+  };
+
+  const downloadNoteFile = async (note: { id: string; title: string; fileType: string; fileUrl?: string }) => {
+    if (!note.fileUrl) return;
+    if (busyDownloadNoteId) return;
+    setBusyDownloadNoteId(note.id);
+
+    try {
+      const signedUrl = await resolveResourceUrl(note.fileUrl);
+
+      const ext =
+        note.fileType?.toLowerCase() === 'pdf'
+          ? 'pdf'
+          : note.fileType?.toLowerCase() === 'image'
+          ? 'png'
+          : 'file';
+
+      const safeBase = (note.title || 'note').replace(/[^a-z0-9\-_. ]/gi, '').trim() || 'note';
+      const filename = safeBase.toLowerCase().endsWith(`.${ext}`) ? safeBase : `${safeBase}.${ext}`;
+
+      const res = await fetch(signedUrl, { credentials: 'omit' });
+      if (!res.ok) throw new Error(`Download failed (${res.status})`);
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 250);
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Failed to download file');
+    } finally {
+      setBusyDownloadNoteId(null);
+    }
   };
 
   const firstLesson = useMemo(() => lessons[0], [lessons]);
@@ -458,6 +527,27 @@ export default function CourseDetails() {
                 
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold">{note.title}</h3>
+                  {note.content ? (
+                    <div className="mt-2">
+                      <p className={cn('text-sm text-muted-foreground', expandedNoteIds.has(note.id) ? '' : 'line-clamp-2')}>
+                        {note.content}
+                      </p>
+                      <button
+                        type="button"
+                        className="mt-1 text-xs text-primary underline-offset-4 hover:underline"
+                        onClick={() => {
+                          setExpandedNoteIds((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(note.id)) next.delete(note.id);
+                            else next.add(note.id);
+                            return next;
+                          });
+                        }}
+                      >
+                        {expandedNoteIds.has(note.id) ? 'Show less' : 'Show more'}
+                      </button>
+                    </div>
+                  ) : null}
                   <div className="flex items-center gap-2 mt-1">
                     <Badge variant="secondary">{note.fileType.toUpperCase()}</Badge>
                     <span className="text-xs text-muted-foreground">
@@ -467,19 +557,35 @@ export default function CourseDetails() {
                 </div>
 
                 {note.fileUrl ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-2"
-                    onClick={() => {
-                      const fileType = (note.fileType ?? 'text').toLowerCase();
-                      const t: any = fileType === 'pdf' ? 'pdf' : fileType === 'image' ? 'image' : 'link';
-                      openPreview({ title: note.title, type: t, urlOrPath: note.fileUrl! });
-                    }}
-                  >
-                    <Download className="w-4 h-4" />
-                    Open
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                      onClick={() => {
+                        const fileType = (note.fileType ?? 'text').toLowerCase();
+                        const t: any = fileType === 'pdf' ? 'pdf' : fileType === 'image' ? 'image' : 'link';
+                        openPreview({ title: note.title, type: t, urlOrPath: note.fileUrl! });
+                      }}
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      Open
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                      disabled={busyDownloadNoteId === note.id}
+                      onClick={() => downloadNoteFile({ id: note.id, title: note.title, fileType: note.fileType, fileUrl: note.fileUrl })}
+                    >
+                      {busyDownloadNoteId === note.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Download className="w-4 h-4" />
+                      )}
+                      Download
+                    </Button>
+                  </div>
                 ) : (
                   <Button variant="outline" size="sm" disabled>
                     No file
