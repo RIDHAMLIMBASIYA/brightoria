@@ -6,7 +6,7 @@ import { Users, BookOpen, BarChart3, Activity, UserCheck, Clock, TrendingUp } fr
 import { Link } from 'react-router-dom';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { useAdminStats } from '@/hooks/useAdminStats';
-import { AdminDatabaseExportDialog } from '@/components/admin/AdminDatabaseExportDialog';
+import { AdminDatabaseExportButton } from '@/components/admin/AdminDatabaseExportButton';
 
 export function AdminDashboard() {
   const analytics = mockAnalytics;
@@ -39,14 +39,7 @@ export function AdminDashboard() {
           </div>
         </div>
         <div className="flex gap-3">
-          <AdminDatabaseExportDialog
-            trigger={
-              <Button variant="outline" className="gap-2">
-                <Clock className="w-4 h-4" />
-                Download DB
-              </Button>
-            }
-          />
+          <AdminDatabaseExportButton />
           <Link to="/admin/users">
             <Button variant="outline" className="gap-2">
               <Users className="w-4 h-4" />

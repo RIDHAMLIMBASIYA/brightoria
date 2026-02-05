@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.quiz-attempt]
 verify_jwt = false
+
+[functions.admin-export-data]
+verify_jwt = false
