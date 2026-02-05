@@ -1,5 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
-import { mockCourses, mockAssignments, mockQuizzes } from '@/data/mockData';
+import { mockAssignments, mockQuizzes } from '@/data/mockData';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { CourseCard } from '@/components/courses/CourseCard';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import { BookOpen, ClipboardList, Brain, Trophy, Calendar, ArrowRight, Clock } f
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { useMemo } from 'react';
+import { useStudentEnrolledCourses } from '@/hooks/useStudentEnrolledCourses';
 
 type PublicProfile = {
   user_id: string;
@@ -31,7 +32,10 @@ function initials(name: string) {
 
 export function StudentDashboard() {
   const { user } = useAuth();
-  const enrolledCourses = mockCourses.slice(0, 3);
+
+  const { data: enrolledCourses = [], isLoading: isLoadingCourses } = useStudentEnrolledCourses(user?.id);
+  const enrolledPreview = enrolledCourses.slice(0, 4);
+
   const upcomingAssignments = mockAssignments.filter(a => a.status === 'open').slice(0, 3);
   const recentQuizzes = mockQuizzes.slice(0, 2);
 
@@ -149,7 +153,7 @@ export function StudentDashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatsCard
           title="Enrolled Courses"
-          value={enrolledCourses.length}
+          value={isLoadingCourses ? '—' : enrolledCourses.length}
           change="+2 this month"
           changeType="positive"
           icon={BookOpen}
@@ -190,11 +194,25 @@ export function StudentDashboard() {
             </Link>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {enrolledCourses.map((course, index) => (
-              <div key={course.id} className={`animate-slide-up stagger-${index + 1}`}>
-                <CourseCard course={course} showTeacher={false} />
+            {isLoadingCourses ? (
+              <p className="text-sm text-muted-foreground">Loading your courses…</p>
+            ) : enrolledPreview.length === 0 ? (
+              <div className="md:col-span-2 rounded-xl border border-border bg-card p-6 text-center">
+                <p className="font-display font-semibold text-card-foreground">No enrolled courses yet</p>
+                <p className="text-sm text-muted-foreground mt-1">Go to Courses and enroll to see them here.</p>
+                <div className="mt-4">
+                  <Button asChild variant="hero">
+                    <Link to="/courses">Browse courses</Link>
+                  </Button>
+                </div>
               </div>
-            ))}
+            ) : (
+              enrolledPreview.map((course, index) => (
+                <div key={course.id} className={`animate-slide-up stagger-${index + 1}`}>
+                  <CourseCard course={course} showTeacher={false} />
+                </div>
+              ))
+            )}
           </div>
         </div>
 
