@@ -208,60 +208,7 @@ export function ProfileEditorDialog({ user, onProfileUpdated, triggerLabel = "Ed
           <DialogTitle>Edit profile</DialogTitle>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 sm:grid-cols-[96px_1fr] gap-4 items-start">
-          <div className="space-y-3">
-            <img
-              src={avatarSrc}
-              alt={`${user.name} avatar`}
-              className="w-24 h-24 rounded-xl ring-2 ring-border object-cover"
-            />
-
-            <div className="space-y-2">
-              <p className="text-xs font-medium text-muted-foreground">Choose an avatar</p>
-              <div className="grid grid-cols-4 gap-3 max-h-64 overflow-y-auto pr-1">
-                {presetAvatars.map((url) => {
-                  const selected = currentAvatar === url;
-                  return (
-                    <button
-                      key={url}
-                      type="button"
-                      onClick={() => setAvatarUrl(url)}
-                      disabled={isUploading || isSettingPresetAvatar}
-                      className={
-                        "relative h-14 w-14 overflow-hidden rounded-xl ring-1 ring-border transition focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60" +
-                        (selected ? " ring-2 ring-primary" : " hover:ring-2 hover:ring-ring")
-                      }
-                      aria-label={selected ? "Selected avatar" : "Select avatar"}
-                    >
-                      <img src={url} alt="Preset avatar" className="h-full w-full object-cover" loading="lazy" />
-                      {selected ? <span className="sr-only">Selected</span> : null}
-                    </button>
-                  );
-                })}
-              </div>
-              <p className="text-xs text-muted-foreground">Or upload your own image below.</p>
-            </div>
-
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={onFileChange}
-            />
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="w-full gap-2"
-              onClick={pickAvatar}
-              disabled={isUploading || isSettingPresetAvatar}
-            >
-              {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-              Change
-            </Button>
-          </div>
-
+        <div className="space-y-4">
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="profile-name">Full Name</Label>
@@ -277,6 +224,63 @@ export function ProfileEditorDialog({ user, onProfileUpdated, triggerLabel = "Ed
               <Label>Email</Label>
               <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
               <p className="text-xs text-muted-foreground">If you change your email, you may need to confirm it via inbox.</p>
+            </div>
+          </div>
+
+          <div className="pt-2 border-t border-border">
+            <div className="flex items-start gap-4">
+              <img
+                src={avatarSrc}
+                alt={`${user.name} avatar`}
+                className="w-24 h-24 rounded-xl ring-2 ring-border object-cover"
+              />
+
+              <div className="flex-1 space-y-2">
+                <p className="text-sm font-medium">Avatar</p>
+                <p className="text-xs text-muted-foreground">Choose a preset or upload your own.</p>
+
+                <p className="text-xs font-medium text-muted-foreground">Choose an avatar</p>
+                <div className="grid grid-cols-4 sm:grid-cols-6 gap-3 max-h-64 overflow-y-auto pr-1">
+                  {presetAvatars.map((url) => {
+                    const selected = currentAvatar === url;
+                    return (
+                      <button
+                        key={url}
+                        type="button"
+                        onClick={() => setAvatarUrl(url)}
+                        disabled={isUploading || isSettingPresetAvatar}
+                        className={
+                          "relative h-16 w-16 overflow-hidden rounded-xl ring-1 ring-border transition focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60" +
+                          (selected ? " ring-2 ring-primary" : " hover:ring-2 hover:ring-ring")
+                        }
+                        aria-label={selected ? "Selected avatar" : "Select avatar"}
+                      >
+                        <img src={url} alt="Preset avatar" className="h-full w-full object-cover" loading="lazy" />
+                        {selected ? <span className="sr-only">Selected</span> : null}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={onFileChange}
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="w-full sm:w-auto gap-2"
+                  onClick={pickAvatar}
+                  disabled={isUploading || isSettingPresetAvatar}
+                >
+                  {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                  Upload avatar
+                </Button>
+              </div>
             </div>
           </div>
         </div>
